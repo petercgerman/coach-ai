@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Coach.AI">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0e0f11">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230e0f11'/><circle cx='50' cy='50' r='12' fill='%23c8f05a'/><text y='.9em' font-size='60' x='50' text-anchor='middle' dy='-5'>💪</text></svg>">
+<title>Coach.AI — Pete</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0f11;--surface:#161719;--surface2:#1e2023;--surface3:#26292e;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#f0f0ee;--muted:#8a8f99;
+  --accent:#c8f05a;--accent2:#5af0c8;--accent3:#f05a8c;--warn:#f0c05a;
+  --fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
+  --r:10px;--rl:16px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);font-size:14px;line-height:1.6;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.nav-logo{font-family:var(--fd);font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.nav-tabs{display:flex;gap:2px;}
+.ntab{padding:5px 12px;border-radius:6px;font-size:12px;color:var(--muted);cursor:pointer;border:none;background:none;font-family:var(--fb);transition:all 0.15s;}
+.ntab:hover{color:var(--text);background:var(--surface2);}
+.ntab.active{color:var(--text);background:var(--surface3);}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.sync-btn{font-size:11px;font-family:var(--fm);padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;transition:all 0.15s;}
+.sync-btn:hover{color:var(--accent);border-color:var(--accent);}
+.nav-status{font-family:var(--fm);font-size:10px;color:var(--accent);display:flex;align-items:center;gap:5px;}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;}
+/* LAYOUT */
+.app{display:flex;flex:1;overflow:hidden;}
+/* SIDEBAR */
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px;}
+.ss{padding:14px;border-bottom:1px solid var(--border);}
+.sl{font-family:var(--fm);font-size:9px;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;}
+/* METRIC CARDS */
+.mr{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px;}
+.mc{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:9px 10px;}
+.mc.full{grid-column:1/-1;}
+.mv{font-family:var(--fd);font-size:18px;font-weight:700;line-height:1;margin-bottom:1px;}
+.mv.small{font-size:14px;}
+.ml{font-size:9px;color:var(--muted);font-family:var(--fm);}
+.md{font-size:9px;font-family:var(--fm);margin-top:3px;}
+.good{color:var(--accent)}.bad{color:var(--accent3)}.neu{color:var(--muted)}.warn{color:var(--warn)}
+/* SOURCE ITEMS */
+.src{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--r);border:1px solid var(--border);margin-bottom:5px;background:var(--surface2);cursor:pointer;transition:all 0.15s;}
+.src:hover{border-color:var(--border2);}
+.src-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.src-info{flex:1;min-width:0;}
+.src-name{font-size:11px;font-weight:500;}
+.src-sub{font-size:9px;color:var(--muted);font-family:var(--fm);}
+.badge{font-size:8px;font-family:var(--fm);padding:2px 5px;border-radius:20px;font-weight:500;flex-shrink:0;}
+.bc{background:rgba(200,240,90,0.12);color:var(--accent);border:1px solid rgba(200,240,90,0.25);}
+.bu{background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border);}
+.bw{background:rgba(240,192,90,0.1);color:var(--warn);border:1px solid rgba(240,192,90,0.25);}
+/* PHOTO SLOTS */
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.pslot{aspect-ratio:3/4;border-radius:var(--r);border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;cursor:pointer;font-size:9px;color:var(--muted);background:var(--surface2);transition:all 0.15s;text-align:center;padding:6px;overflow:hidden;position:relative;}
+.pslot:hover{border-color:var(--accent);color:var(--accent);}
+.pslot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:var(--r);}
+.pslot .overlay{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);padding:3px;font-size:8px;text-align:center;}
+/* TABS */
+.tab-panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.tab-panel.active{display:flex;}
+/* CHAT */
+.chat-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface);}
+.ch-title{font-family:var(--fd);font-size:14px;font-weight:600;}
+.ch-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.cpills{display:flex;gap:5px;flex-wrap:wrap;}
+.cpill{font-size:9px;font-family:var(--fm);padding:2px 7px;border-radius:20px;border:1px solid var(--border2);color:var(--muted);}
+.cpill.on{border-color:rgba(200,240,90,0.3);color:var(--accent);background:rgba(200,240,90,0.06);}
+.messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth;}
+.messages::-webkit-scrollbar{width:3px;}
+.messages::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px;}
+.msg{display:flex;gap:10px;align-items:flex-start;}
+.msg.user{flex-direction:row-reverse;align-self:flex-end;max-width:75%;}
+.avatar{width:26px;height:26px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;font-family:var(--fm);}
+.av-coach{background:rgba(200,240,90,0.15);color:var(--accent);border:1px solid rgba(200,240,90,0.25);}
+.av-user{background:var(--surface3);color:var(--text);border:1px solid var(--border2);}
+.bubble{padding:10px 14px;border-radius:11px;font-size:13px;line-height:1.65;}
+.bc-coach{background:var(--surface);border:1px solid var(--border);border-top-left-radius:3px;max-width:580px;}
+.bc-user{background:var(--surface2);border:1px solid var(--border2);border-top-right-radius:3px;}
+.bmeta{font-size:9px;color:var(--muted);font-family:var(--fm);margin-top:3px;padding:0 3px;}
+.msg.user .bmeta{text-align:right;}
+/* UPDATE CARDS in chat */
+.update-card{margin-top:8px;background:var(--surface2);border:1px solid rgba(200,240,90,0.2);border-radius:var(--r);padding:10px 12px;}
+.update-card-title{font-family:var(--fm);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
+.update-grid{display:flex;gap:12px;flex-wrap:wrap;}
+.update-item{font-size:11px;}
+.update-item span{color:var(--muted);font-size:10px;}
+/* QUICK PROMPTS */
+.qp{padding:10px 20px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;background:var(--surface);flex-shrink:0;}
+.qbtn{font-size:10px;font-family:var(--fb);padding:4px 10px;border-radius:20px;border:1px solid var(--border2);color:var(--muted);background:none;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.qbtn:hover{color:var(--accent);border-color:var(--accent);}
+/* INPUT */
+.input-area{padding:10px 20px 14px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.iw{display:flex;align-items:flex-end;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:11px;padding:8px 10px;transition:border-color 0.15s;}
+.iw:focus-within{border-color:rgba(200,240,90,0.4);}
+.ci{flex:1;background:none;border:none;outline:none;font-family:var(--fb);font-size:13px;color:var(--text);resize:none;min-height:18px;max-height:120px;line-height:1.5;}
+.ci::placeholder{color:var(--muted);}
+.iacts{display:flex;gap:5px;align-items:flex-end;flex-shrink:0;}
+.bico{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all 0.15s;}
+.bico:hover{color:var(--text);background:var(--surface3);}
+.bsend{width:28px;height:28px;border-radius:7px;border:none;background:var(--accent);color:#0e0f11;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;transition:all 0.15s;}
+.bsend:hover{opacity:0.85;}
+.bsend:disabled{opacity:0.3;cursor:not-allowed;}
+/* TYPING */
+.typing{display:flex;gap:3px;padding:3px 0;}
+.td{width:4px;height:4px;border-radius:50%;background:var(--muted);animation:tb 1.2s infinite;}
+.td:nth-child(2){animation-delay:0.2s;}.td:nth-child(3){animation-delay:0.4s;}
+@keyframes tb{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-4px);opacity:1}}
+/* DATA TAB */
+.dtab{flex:1;overflow-y:auto;padding:20px;background:var(--bg);}
+.dtab::-webkit-scrollbar{width:3px;}
+.dtab::-webkit-scrollbar-thumb{background:var(--surface3);}
+.dsection{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px;margin-bottom:14px;}
+.dsection h3{font-family:var(--fd);font-size:14px;font-weight:600;margin-bottom:4px;}
+.dsection p{font-size:11px;color:var(--muted);margin-bottom:12px;}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.field{display:flex;flex-direction:column;gap:3px;}
+.field label{font-size:10px;color:var(--muted);font-family:var(--fm);}
+.field input{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--text);font-family:var(--fb);outline:none;}
+.field input:focus{border-color:rgba(200,240,90,0.4);}
+.save-btn{margin-top:12px;padding:7px 16px;border-radius:7px;border:none;background:var(--accent);color:#0e0f11;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all 0.15s;}
+.save-btn:hover{opacity:0.85;}
+/* PROGRESS TAB */
+.ptab{flex:1;overflow-y:auto;padding:20px;background:var(--bg);}
+.ptab::-webkit-scrollbar{width:3px;}
+.ptab::-webkit-scrollbar-thumb{background:var(--surface3);}
+/* HIDDEN */
+.hf{display:none;}
+/* DIVIDER */
+.divider{text-align:center;font-size:9px;font-family:var(--fm);color:var(--muted);display:flex;align-items:center;gap:8px;margin:4px 0;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+/* IMAGE PREVIEW in chat */
+.img-preview{max-width:200px;border-radius:8px;margin-top:6px;border:1px solid var(--border2);}
+/* CHECKIN PROMPT */
+.checkin-card{background:var(--surface2);border:1px solid rgba(200,240,90,0.2);border-radius:var(--r);padding:12px 14px;margin-top:8px;}
+.checkin-title{font-family:var(--fm);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;}
+.checkin-q{font-size:12px;margin-bottom:8px;}
+.checkin-opts{display:flex;gap:6px;flex-wrap:wrap;}
+.copt{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;transition:all 0.15s;}
+.copt:hover{color:var(--accent);border-color:var(--accent);}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo"><div class="logo-dot"></div>Coach.AI — Pete</div>
+  <div class="nav-tabs">
+    <button class="ntab active" onclick="switchTab('coach')">Coach</button>
+    <button class="ntab" onclick="switchTab('data')">Data</button>
+    <button class="ntab" onclick="switchTab('progress')">Progress</button>
+  </div>
+  <div class="nav-right">
+    <button class="sync-btn" onclick="startCheckin()">+ Check-in</button>
+    <div class="nav-status"><div class="sdot"></div><span id="db-status">loading...</span></div>
+  </div>
+</nav>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="ss">
+      <div class="sl">Body Composition</div>
+      <div class="mr">
+        <div class="mc"><div class="mv" id="s-weight">—</div><div class="ml">Weight (lb)</div><div class="md" id="s-weight-d"></div></div>
+        <div class="mc"><div class="mv" id="s-bf">—</div><div class="ml">Body fat %</div><div class="md" id="s-bf-d"></div></div>
+      </div>
+      <div class="mr">
+        <div class="mc"><div class="mv small" id="s-ffm">—</div><div class="ml">Fat-free mass</div></div>
+        <div class="mc"><div class="mv small" id="s-vf">—</div><div class="ml">Visceral fat</div><div class="md" id="s-vf-d"></div></div>
+      </div>
+    </div>
+    <div class="ss">
+      <div class="sl">Recovery & Fitness</div>
+      <div class="mr">
+        <div class="mc"><div class="mv small" id="s-sleep">—</div><div class="ml">Sleep (hrs)</div><div class="md" id="s-sleep-d"></div></div>
+        <div class="mc"><div class="mv small" id="s-vo2">—</div><div class="ml">VO2max</div><div class="md" id="s-vo2-d"></div></div>
+      </div>
+      <div class="mr">
+        <div class="mc"><div class="mv small" id="s-hrv">—</div><div class="ml">HRV</div></div>
+        <div class="mc"><div class="mv small" id="s-bb">—</div><div class="ml">Body Battery</div></div>
+      </div>
+      <div class="mr" style="margin-top:5px">
+        <div class="mc"><div class="mv small">3,210</div><div class="ml">TDEE kcal/day</div><div class="md good">known ✓</div></div>
+        <div class="mc"><div class="mv small" id="s-stress">—</div><div class="ml">Stress score</div></div>
+      </div>
+      <div class="mc full" style="margin-top:5px"><div class="mv small">46 bpm</div><div class="ml">Resting HR · excellent</div></div>
+    </div>
+    <div class="ss">
+      <div class="sl">Training</div>
+      <div class="mr">
+        <div class="mc"><div class="mv small" id="s-sessions">—</div><div class="ml">Sessions/week</div></div>
+        <div class="mc"><div class="mv small" id="s-lastw">—</div><div class="ml">Last workout</div></div>
+      </div>
+      <div class="mc full" style="margin-top:5px"><div class="mv small" id="s-lastex">—</div><div class="ml">Last session exercises</div></div>
+    </div>
+    <div class="ss">
+      <div class="sl">Progress Photos</div>
+      <div class="pgrid">
+        <div class="pslot" id="photo-front-slot" onclick="triggerPhoto('front')">
+          <span style="font-size:16px;opacity:0.4" id="photo-front-icon">📸</span>
+          <span id="photo-front-lbl">Front</span>
+        </div>
+        <div class="pslot" id="photo-side-slot" onclick="triggerPhoto('side')">
+          <span style="font-size:16px;opacity:0.4" id="photo-side-icon">📸</span>
+          <span id="photo-side-lbl">Side</span>
+        </div>
+      </div>
+      <div style="font-size:9px;color:var(--muted);margin-top:6px;font-family:var(--fm)" id="photo-date">Monthly · May 2026</div>
+    </div>
+    <div class="ss">
+      <div class="sl">Data Sources</div>
+      <div class="src" onclick="sendQuick('I want to update my Renpho data. Can you ask me what to log?')">
+        <div class="src-icon" style="background:rgba(90,240,200,0.1)">⚖️</div>
+        <div class="src-info"><div class="src-name">Renpho</div><div class="src-sub" id="src-renpho-date">tap to update</div></div>
+        <span class="badge" id="src-renpho-badge">Update</span>
+      </div>
+      <div class="src" onclick="sendQuick('I want to log my latest workout from Fitbod. Can you ask me what I did?')">
+        <div class="src-icon" style="background:rgba(200,240,90,0.1)">🏋️</div>
+        <div class="src-info"><div class="src-name">Fitbod</div><div class="src-sub" id="src-fitbod-date">tap to log workout</div></div>
+        <span class="badge" id="src-fitbod-badge">Update</span>
+      </div>
+      <div class="src" onclick="sendQuick('I want to update my Garmin health data. Can you ask me about my sleep, HRV, Body Battery and stress?')">
+        <div class="src-icon" style="background:rgba(90,160,240,0.12)">⌚</div>
+        <div class="src-info"><div class="src-name">Garmin</div><div class="src-sub" id="src-garmin-date">tap to update</div></div>
+        <span class="badge" id="src-garmin-badge">Update</span>
+      </div>
+      <div class="src" onclick="document.getElementById('file-screenshot').click()">
+        <div class="src-icon" style="background:rgba(240,192,90,0.1)">📱</div>
+        <div class="src-info"><div class="src-name">Screenshot</div><div class="src-sub">upload app screenshot</div></div>
+        <span class="badge bu">Scan</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- COACH TAB -->
+  <main class="tab-panel active" id="tab-coach">
+    <div class="chat-header">
+      <div>
+        <div class="ch-title">Pete's Health Coach</div>
+        <div class="ch-sub" id="ch-sub">Loading your data...</div>
+      </div>
+      <div class="cpills">
+        <span class="cpill on">⚖️ Renpho</span>
+        <span class="cpill on">🏋️ Fitbod</span>
+        <span class="cpill on">⌚ Garmin</span>
+        <span class="cpill on" id="pill-photos">📸 Photos</span>
+      </div>
+    </div>
+    <div class="messages" id="messages">
+      <div class="divider">Session start · <span id="session-date"></span></div>
+    </div>
+    <div class="qp" id="quick-prompts">
+      <button class="qbtn" onclick="sendQuick('My TDEE is 3210 kcal. Give me a specific daily calorie and macro target to lose 1-1.5lb per week without losing muscle.')">Calorie plan</button>
+      <button class="qbtn" onclick="sendQuick('Give me a complete analysis — body comp, training, sleep, calorie burn. What are my top 3 priorities right now?')">Full snapshot</button>
+      <button class="qbtn" onclick="sendQuick('My deep sleep is only 1.25h/night on average. What specifically can I do to increase it?')">Fix deep sleep</button>
+      <button class="qbtn" onclick="sendQuick('What workouts should I do this week based on my training history and current recovery data?')">This week</button>
+      <button class="qbtn" onclick="sendQuick('My VO2max dropped from 43 to 40 since February. Design a cardio plan to bring it back up.')">VO2max plan</button>
+      <button class="qbtn" onclick="sendQuick('How do I get my visceral fat from 15 to under 12? What is the timeline?')">Visceral fat</button>
+      <button class="qbtn" onclick="startCheckin()">📋 Daily check-in</button>
+    </div>
+    <div class="input-area">
+      <div class="iw">
+        <textarea class="ci" id="chat-input" placeholder="Ask your coach, paste screenshot text, or describe what you see in your apps..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <div class="iacts">
+          <button class="bico" title="Upload screenshot" onclick="document.getElementById('file-screenshot').click()">📎</button>
+          <button class="bsend" id="send-btn" onclick="sendMessage()">↑</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- DATA TAB -->
+  <main class="tab-panel" id="tab-data">
+    <div class="dtab">
+      <div style="max-width:560px;margin:0 auto">
+        <h2 style="font-family:var(--fd);font-size:20px;font-weight:700;margin-bottom:4px">Health Data Store</h2>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:18px">Your live data. Updated by check-ins, screenshots, and conversations. Edit any field manually below.</p>
+
+        <div class="dsection">
+          <h3>⚖️ Body Composition</h3>
+          <p>From Renpho scale — update after each weigh-in</p>
+          <div class="field-grid">
+            <div class="field"><label>Weight (lb)</label><input type="number" id="f-weight" step="0.1" placeholder="282.0"></div>
+            <div class="field"><label>Body Fat %</label><input type="number" id="f-bf" step="0.1" placeholder="20.5"></div>
+            <div class="field"><label>Fat-Free Mass (lb)</label><input type="number" id="f-ffm" step="0.1" placeholder="224.2"></div>
+            <div class="field"><label>Muscle Mass (lb)</label><input type="number" id="f-muscle" step="0.1" placeholder="213.0"></div>
+            <div class="field"><label>Visceral Fat (score)</label><input type="number" id="f-vf" step="1" placeholder="15"></div>
+            <div class="field"><label>BMR (kcal)</label><input type="number" id="f-bmr" step="1" placeholder="2500"></div>
+            <div class="field"><label>Last weighed (date)</label><input type="date" id="f-weight-date"></div>
+            <div class="field"><label>All-time low (lb)</label><input type="number" id="f-atl" step="0.1" placeholder="277.6"></div>
+          </div>
+          <button class="save-btn" onclick="saveSection('body')">Save body data</button>
+        </div>
+
+        <div class="dsection">
+          <h3>⌚ Recovery & Fitness</h3>
+          <p>From Garmin — update after checking your watch or app</p>
+          <div class="field-grid">
+            <div class="field"><label>Last night sleep (hrs)</label><input type="number" id="f-sleep" step="0.1" placeholder="7.5"></div>
+            <div class="field"><label>Sleep quality (1-10)</label><input type="number" id="f-sleepq" step="1" min="1" max="10" placeholder="7"></div>
+            <div class="field"><label>HRV (ms)</label><input type="number" id="f-hrv" step="1" placeholder="45"></div>
+            <div class="field"><label>Body Battery (0-100)</label><input type="number" id="f-bb" step="1" min="0" max="100" placeholder="72"></div>
+            <div class="field"><label>Resting HR (bpm)</label><input type="number" id="f-rhr" step="1" placeholder="58"></div>
+            <div class="field"><label>Stress score (0-100)</label><input type="number" id="f-stress" step="1" placeholder="35"></div>
+            <div class="field"><label>VO2max</label><input type="number" id="f-vo2" step="0.1" placeholder="40.3"></div>
+            <div class="field"><label>Steps today</label><input type="number" id="f-steps" step="100" placeholder="8500"></div>
+          </div>
+          <button class="save-btn" onclick="saveSection('recovery')">Save recovery data</button>
+        </div>
+
+        <div class="dsection">
+          <h3>🏋️ Last Workout</h3>
+          <p>From Fitbod — log after each session</p>
+          <div class="field-grid">
+            <div class="field"><label>Date</label><input type="date" id="f-wdate"></div>
+            <div class="field"><label>Type (Push/Pull/Legs/Cardio)</label><input type="text" id="f-wtype" placeholder="Push"></div>
+            <div class="field" style="grid-column:1/-1"><label>Exercises (brief summary)</label><input type="text" id="f-wex" placeholder="DB Bench 60lb, Shoulder Press 40lb, Skullcrusher 25lb..."></div>
+            <div class="field"><label>Duration (min)</label><input type="number" id="f-wdur" step="5" placeholder="45"></div>
+            <div class="field"><label>Perceived effort (1-10)</label><input type="number" id="f-weff" step="1" min="1" max="10" placeholder="7"></div>
+          </div>
+          <button class="save-btn" onclick="saveSection('workout')">Save workout</button>
+        </div>
+
+        <div class="dsection">
+          <h3>🥗 Nutrition (today)</h3>
+          <p>Quick daily log — estimates are fine</p>
+          <div class="field-grid">
+            <div class="field"><label>Calories eaten (kcal)</label><input type="number" id="f-cals" step="50" placeholder="2200"></div>
+            <div class="field"><label>Protein (g)</label><input type="number" id="f-protein" step="5" placeholder="150"></div>
+            <div class="field"><label>Water (oz)</label><input type="number" id="f-water" step="8" placeholder="80"></div>
+            <div class="field"><label>Diet quality (1-10)</label><input type="number" id="f-dietq" step="1" min="1" max="10" placeholder="7"></div>
+          </div>
+          <button class="save-btn" onclick="saveSection('nutrition')">Save nutrition</button>
+        </div>
+
+        <div class="dsection">
+          <h3>📝 Notes & Goals</h3>
+          <div class="field-grid">
+            <div class="field" style="grid-column:1/-1"><label>Current goal</label><input type="text" id="f-goal" placeholder="Lose fat, preserve muscle, get visceral fat under 12"></div>
+            <div class="field"><label>Target weight (lb)</label><input type="number" id="f-tweight" step="0.5" placeholder="260"></div>
+            <div class="field"><label>Target body fat %</label><input type="number" id="f-tbf" step="0.5" placeholder="15"></div>
+          </div>
+          <button class="save-btn" onclick="saveSection('goals')">Save goals</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- PROGRESS TAB -->
+  <main class="tab-panel" id="tab-progress">
+    <div class="ptab">
+      <div style="max-width:660px;margin:0 auto">
+        <h2 style="font-family:var(--fd);font-size:20px;font-weight:700;margin-bottom:4px">Progress</h2>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:18px">Historical trends from your data store.</p>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px;margin-bottom:14px">
+          <canvas id="weightChart" height="180"></canvas>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px;margin-bottom:14px">
+          <canvas id="sleepChart" height="140"></canvas>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px">
+          <canvas id="vo2Chart" height="140"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<input type="file" class="hf" id="file-screenshot" accept="image/*" onchange="handleScreenshot(event)">
+<input type="file" class="hf" id="file-photo-front" accept="image/*" onchange="handlePhoto(event,'front')">
+<input type="file" class="hf" id="file-photo-side" accept="image/*" onchange="handlePhoto(event,'side')">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const MODEL = "claude-sonnet-4-20250514";
+
+// ── DEFAULT DATA (seeded from Pete's historical data) ──────────────────
+const DEFAULT_DB = {
+  body: {
+    weight: 282.0, bf: 20.5, ffm: 224.2, muscle: 213.0,
+    vf: 15, bmr: 2500, weightDate: "2026-05-03", atl: 277.6,
+    history: [
+      {date:"2025-05-03",w:281.0},{date:"2025-06-01",w:282.4},{date:"2025-07-01",w:282.0},
+      {date:"2025-08-01",w:284.2},{date:"2025-09-01",w:282.4},{date:"2025-10-01",w:282.0},
+      {date:"2025-11-01",w:280.6},{date:"2025-12-01",w:279.6},{date:"2026-01-05",w:281.6},
+      {date:"2026-01-17",w:277.6},{date:"2026-02-01",w:281.6},{date:"2026-03-01",w:282.4},
+      {date:"2026-04-01",w:284.2},{date:"2026-04-26",w:284.6},{date:"2026-05-03",w:282.0}
+    ]
+  },
+  recovery: {
+    sleep: 7.3, sleepQ: null, hrv: null, bb: 98,
+    rhr: 45, stress: 19, vo2: 40.0, steps: 8892,
+    sleepHistory: [
+      {week:"May 5-11 2025",h:6.8},{week:"May 26 2025",h:7.3},{week:"Jun 9 2025",h:7.1},
+      {week:"Jul 7 2025",h:6.8},{week:"Aug 4 2025",h:6.7},{week:"Sep 1 2025",h:7.9},
+      {week:"Oct 6 2025",h:7.6},{week:"Oct 27 2025",h:6.2},{week:"Nov 17 2025",h:6.7},
+      {week:"Dec 8 2025",h:7.0},{week:"Dec 22 2025",h:6.1},{week:"Jan 5 2026",h:7.5},
+      {week:"Jan 19 2026",h:8.1},{week:"Feb 9 2026",h:8.2},{week:"Mar 2 2026",h:8.1},
+      {week:"Apr 13 2026",h:7.9},{week:"Apr 27 2026",h:7.1}
+    ],
+    vo2History: [
+      {month:"Jun 2025",v:39.7},{month:"Jul 2025",v:39.6},{month:"Aug 2025",v:40.5},
+      {month:"Sep 2025",v:40.4},{month:"Oct 2025",v:41.1},{month:"Nov 2025",v:41.0},
+      {month:"Dec 2025",v:41.9},{month:"Jan 2026",v:42.0},{month:"Feb 2026",v:42.4},
+      {month:"Mar 2026",v:41.6},{month:"Apr 2026",v:40.3}
+    ]
+  },
+  workout: {
+    lastDate: "2026-05-03", lastType: "Cardio", lastExercises: "Elliptical 45min",
+    lastDuration: 45, lastEffort: 6, sessionsPerWeek: 5,
+    history: [
+      {date:"2026-05-03",type:"Cardio",ex:"Elliptical 45min"},
+      {date:"2026-05-02",type:"Pull",ex:"Pull Ups, Preacher Curl 60lb, KB Row 26lb, Reverse Barbell Curl 50lb"},
+      {date:"2026-05-01",type:"Push",ex:"DB Bench 60lb, Shoulder Press 40lb, Skullcrusher 25lb, Fly 30lb"},
+      {date:"2026-04-29",type:"Legs",ex:"Leg Press 230lb, Hip Thrust 160lb, Leg Curl 110lb, Leg Ext 95lb"},
+      {date:"2026-04-23",type:"Pull",ex:"DB Row 50lb, Machine Row 135lb, Lat Pulldown 100lb, Bicep Curl 30lb"}
+    ]
+  },
+  nutrition: { cals: null, protein: null, water: null, dietQ: null },
+  goals: { goal: "Lose fat, preserve muscle, get visceral fat under 12", targetWeight: 260, targetBF: 15 },
+  photos: { front: null, side: null, date: "2026-05-03" },
+  meta: { lastUpdated: "2026-05-03", version: 3 }
+};
+
+// ── STATE ──────────────────────────────────────────────────────────────
+let db = JSON.parse(JSON.stringify(DEFAULT_DB));
+let messages = [];
+let loading = false;
+let pendingImage = null; // {base64, mimeType, preview}
+
+// ── STORAGE ───────────────────────────────────────────────────────────
+async function loadDB() {
+  try {
+    const r = await window.storage.get('pete-health-db');
+    if (r && r.value) {
+      const saved = JSON.parse(r.value);
+      // Deep merge saved over defaults (keeps history arrays from seed if not overwritten)
+      db = deepMerge(DEFAULT_DB, saved);
+    }
+  } catch(e) { /* first run, use defaults */ }
+  updateSidebar();
+  updateDBStatus();
+  renderCharts();
+  populateDataFields();
+  showWelcome();
+}
+
+async function saveDB() {
+  try {
+    db.meta.lastUpdated = new Date().toISOString().split('T')[0];
+    await window.storage.set('pete-health-db', JSON.stringify(db));
+    updateDBStatus();
+    updateSidebar();
+  } catch(e) { console.error('Save failed', e); }
+}
+
+function deepMerge(base, override) {
+  const result = {...base};
+  for (const key of Object.keys(override)) {
+    if (override[key] && typeof override[key] === 'object' && !Array.isArray(override[key])) {
+      result[key] = deepMerge(base[key] || {}, override[key]);
+    } else if (override[key] !== null && override[key] !== undefined) {
+      result[key] = override[key];
+    }
+  }
+  return result;
+}
+
+function updateDBStatus() {
+  const el = document.getElementById('db-status');
+  if (el) el.textContent = 'synced ' + (db.meta?.lastUpdated || 'today');
+}
+
+// ── SIDEBAR METRICS ───────────────────────────────────────────────────
+function updateSidebar() {
+  const b = db.body, r = db.recovery, w = db.workout;
+  set('s-weight', b.weight ? b.weight+'lb' : '—');
+  set('s-weight-d', b.atl ? `low: ${b.atl}lb` : '', 'neu');
+  set('s-bf', b.bf ? b.bf+'%' : '—');
+  set('s-bf-d', 'post-Jan scale', 'neu');
+  set('s-ffm', b.ffm ? b.ffm+'lb' : '—');
+  set('s-vf', b.vf || '—');
+  set('s-vf-d', b.vf >= 13 ? 'elevated ↑' : b.vf ? 'good' : '', b.vf >= 13 ? 'bad' : 'good');
+  set('s-sleep', r.sleep ? r.sleep+'h' : '—');
+  set('s-sleep-d', r.sleepQ ? `quality: ${r.sleepQ}/10` : '27% weeks <7h', r.sleepQ >= 7 ? 'good' : r.sleepQ ? 'warn' : 'neu');
+  set('s-vo2', r.vo2 || '—');
+  set('s-vo2-d', r.vo2 ? (r.vo2 >= 42 ? '↑ good' : '↓ from 42.4') : '', r.vo2 >= 42 ? 'good' : 'bad');
+  set('s-hrv', r.hrv ? r.hrv+'ms' : r.rhr ? '—' : '—');
+  set('s-bb', r.bb ? r.bb+'/100' : '—');
+  set('s-stress', r.stress ? r.stress+'/100' : '—');
+  set('s-sessions', w.sessionsPerWeek ? w.sessionsPerWeek+'/wk' : '—');
+  set('s-lastw', w.lastDate ? w.lastDate.split('-').slice(1).join('/') : '—');
+  set('s-lastex', w.lastExercises ? w.lastExercises.substring(0,35)+'...' : '—');
+  // source badges
+  updateSrcBadge('renpho', b.weightDate);
+  updateSrcBadge('fitbod', w.lastDate);
+  updateSrcBadge('garmin', r.sleep ? db.meta.lastUpdated : null);
+}
+
+function set(id, val, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = val;
+  if (cls) el.className = 'md ' + cls;
+}
+
+function updateSrcBadge(src, date) {
+  const badge = document.getElementById('src-'+src+'-badge');
+  const sub = document.getElementById('src-'+src+'-date');
+  if (date) {
+    if (badge) { badge.textContent = 'Updated'; badge.className = 'badge bc'; }
+    if (sub) sub.textContent = date;
+  }
+}
+
+// ── SYSTEM PROMPT ─────────────────────────────────────────────────────
+function buildPrompt() {
+  const b = db.body, r = db.recovery, w = db.workout, n = db.nutrition, g = db.goals;
+  const wHist = (w.history||[]).slice(0,10).map(h=>`  ${h.date} [${h.type}]: ${h.ex}`).join('\n');
+  const bHist = (b.history||[]).slice(-8).map(h=>`  ${h.date}: ${h.w}lb`).join('\n');
+  const sHist = (r.sleepHistory||[]).slice(-8).map(h=>`  ${h.week}: ${h.h}h`).join('\n');
+  const v2Hist = (r.vo2History||[]).map(h=>`  ${h.month}: ${h.v}`).join('\n');
+
+  return `You are Pete's personal AI health and performance coach. You are direct, data-driven, brutally honest, and give specific actionable advice. You speak like a brilliant knowledgeable friend — never corporate or generic.
+
+PETE'S LIVE HEALTH DATA (as of ${db.meta?.lastUpdated || 'today'}):
+
+BODY COMPOSITION:
+- Weight: ${b.weight}lb (last weighed: ${b.weightDate})
+- Body fat: ${b.bf}% | Fat-free mass: ${b.ffm}lb | Muscle: ${b.muscle}lb
+- Visceral fat: ${b.vf}/59 (elevated — target <12) | BMR: ${b.bmr} kcal
+- All-time low: ${b.atl}lb | Currently ${b.weight && b.atl ? (b.weight-b.atl).toFixed(1) : '?'}lb above low
+- NOTE: Scale recalibrated Jan 19 2026 — BF% jumped from ~32% to ~20% algorithmically, not real change
+Weight history (recent):
+${bHist}
+
+RECOVERY & FITNESS:
+- Last sleep: ${r.sleep}h${r.sleepQ ? ` (quality: ${r.sleepQ}/10)` : ''}
+- HRV: ${r.hrv||'not logged'} | Body Battery: ${r.bb||'not logged'} | Resting HR: ${r.rhr||'not logged'}
+- Stress score: ${r.stress||'not logged'} | VO2max: ${r.vo2} | Steps: ${r.steps||'not logged'}
+- Sleep pattern: avg 7h17min/week over 52 weeks, 27% of weeks under 7h
+- Worst stretch: Oct-Nov 2025 (6h 12min–6h 43min, late bedtimes >11:30pm)
+- Best stretch: Feb-Mar 2026 (8h+, earlier bedtimes)
+Sleep history (recent weeks):
+${sHist}
+VO2max history:
+${v2Hist}
+
+GARMIN FULL DATASET:
+=== GARMIN MONTHLY AVERAGES (May 2025 – May 2026) ===\nMonth      | TotalCal | Steps | RHR | Stress | BB_hi | Sleep | Deep | REM\n2025-05   |     3167 |  6819 |  46 |     27 |    86 |  7.03 | 1.06 | 1.53\n2025-06   |     3320 |  7912 |  46 |     26 |    87 |  6.89 | 1.05 | 1.56\n2025-07   |     3246 |  7537 |  46 |     27 |    80 |  6.99 | 1.16 | 1.51\n2025-08   |     3130 |  6881 |  47 |     27 |    86 |  7.59 | 1.20 | 1.65\n2025-09   |     3218 |  7620 |  46 |     27 |    86 |  7.58 | 1.01 | 1.59\n2025-10   |     3211 |  6917 |  47 |     26 |    84 |  7.10 | 1.22 | 1.61\n2025-11   |     3280 |  8372 |  47 |     24 |    91 |  7.17 | 1.20 | 1.60\n2025-12   |     3176 |  6870 |  47 |     24 |    86 |  7.01 | 1.28 | 1.50\n2026-01   |     3148 |  7000 |  47 |     24 |    89 |  7.45 | 1.42 | 1.66\n2026-02   |     3164 |  7001 |  47 |     25 |    88 |  7.53 | 1.37 | 1.58\n2026-03   |     3217 |  7739 |  47 |     25 |    83 |  7.73 | 1.91 | 1.50\n2026-04   |     3295 |  8876 |  46 |     27 |    87 |  7.44 | 1.10 | 1.61\n2026-05   |     2770 |  7215 |  45 |     23 |    92 |  7.18 | 1.08 | 1.69\n\n=== DAILY LOG (last 60 days: Mar 4 – May 3 2026) ===\nDate       | TotalCal | Active | Steps | RHR | Stress | BB | Sleep(deep/rem)\n2026-03-04 |     3513 |    736 |  9576 |  47 |     26 | 88 | 6.42h(d:1.4 r:0.93)\n2026-03-05 |     3119 |    342 |  7235 |  47 |     23 | 98 | 8.93h(d:0.88 r:2.4)\n2026-03-06 |     2822 |     45 |   671 |  47 |     26 | 56 | 9.0h(d:6.95 r:0.0)\n2026-03-07 |     3246 |    469 |  8630 |  47 |     29 | 70 | 7.32h(d:1.87 r:0.98)\n2026-03-08 |     3398 |    621 | 12147 |  47 |     25 | 71 | 9.4h(d:0.97 r:2.38)\n2026-03-09 |     3161 |    384 |  8382 |  47 |     25 | 82 | 6.3h(d:1.05 r:1.27)\n2026-03-10 |     3669 |    892 |  8096 |  47 |     31 | 92 | 7.65h(d:1.6 r:1.53)\n2026-03-11 |     3336 |    559 | 10138 |  47 |     29 | 43 | 9.13h(d:8.92 r:0.0)\n2026-03-12 |     3436 |    659 |  9219 |  48 |     21 | 98 | 7.13h(d:0.38 r:2.17)\n2026-03-13 |     3196 |    419 |  8318 |  47 |     21 | 100 | 7.63h(d:0.57 r:2.47)\n2026-03-14 |     2971 |    194 |  5876 |  46 |     25 | 87 | 7.27h(d:1.72 r:1.92)\n2026-03-15 |     2913 |    136 |  4747 |  46 |     26 | 84 | 7.17h(d:1.53 r:0.62)\n2026-03-16 |     2812 |     35 |  1626 |  46 |     22 | 67 | 9.13h(d:6.98 r:0.0)\n2026-03-17 |     3071 |    294 |  7580 |  46 |     23 | 100 | 7.73h(d:0.83 r:2.58)\n2026-03-18 |     2980 |    203 |  6134 |  46 |     20 | 82 | 8.78h(d:1.87 r:1.52)\n2026-03-19 |     3064 |    287 |  6291 |  46 |     24 | 88 | 6.83h(d:1.95 r:1.42)\n2026-03-20 |     2853 |     76 |  4195 |  46 |     23 | 100 | 8.25h(d:0.67 r:2.3)\n2026-03-21 |     3132 |    355 |  8163 |  46 |     27 | 90 | 8.07h(d:1.15 r:1.63)\n2026-03-22 |     3514 |    737 |  9158 |  47 |     40 | 84 | —\n2026-03-23 |     3233 |    456 |  8734 |  47 |     22 | 72 | 6.1h(d:1.1 r:0.4)\n2026-03-24 |     3345 |    568 |  8584 |  47 |     27 | 92 | 7.4h(d:0.9 r:1.9)\n2026-03-25 |     3401 |    624 | 11219 |  47 |     30 | 79 | 6.32h(d:1.75 r:1.63)\n2026-03-26 |     3546 |    769 | 11645 |  47 |     21 | 76 | 6.97h(d:1.08 r:1.58)\n2026-03-27 |     3167 |    390 |  8424 |  48 |     22 | 95 | 6.43h(d:1.35 r:1.75)\n2026-03-28 |     3284 |    507 |  9011 |  48 |     26 | 84 | 8.87h(d:1.8 r:2.38)\n2026-03-29 |     2848 |     71 |  3925 |  47 |     24 | 73 | —\n2026-03-30 |     3517 |    740 | 10033 |  47 |     30 | 100 | 10.07h(d:1.98 r:2.03)\n2026-03-31 |     3715 |    938 |  9635 |  47 |     23 | 81 | 6.68h(d:0.5 r:0.72)\n2026-04-01 |     3106 |    329 |  6933 |  47 |     21 | 94 | 6.83h(d:0.8 r:1.42)\n2026-04-02 |     3135 |    625 | 11199 |  46 |     22 | 100 | 7.37h(d:1.03 r:1.7)\n2026-04-03 |     3323 |    546 | 11664 |  47 |     37 | 83 | —\n2026-04-04 |     2946 |    169 |  6186 |  47 |     22 | 82 | 6.18h(d:1.33 r:1.08)\n2026-04-05 |     2998 |    221 |  5235 |  47 |     23 | 73 | 8.17h(d:1.88 r:1.85)\n2026-04-06 |     3239 |    462 |  8306 |  47 |     22 | 100 | 6.65h(d:0.27 r:1.88)\n2026-04-07 |     3481 |    704 | 10761 |  46 |     30 | 100 | 6.88h(d:0.75 r:1.48)\n2026-04-08 |     3201 |    424 |  7828 |  47 |     19 | 94 | 10.1h(d:1.03 r:2.35)\n2026-04-09 |     3267 |    490 |  7647 |  47 |     29 | 98 | 8.05h(d:1.4 r:1.72)\n2026-04-10 |     4128 |   1351 | 15541 |  47 |     39 | 63 | 5.8h(d:1.85 r:0.5)\n2026-04-11 |     3532 |    755 | 13139 |  46 |     23 | 79 | —\n2026-04-12 |     3525 |    748 |  7735 |  46 |     29 | 100 | 7.37h(d:1.05 r:1.35)\n2026-04-13 |     3555 |    778 | 12010 |  46 |     33 | 72 | 6.92h(d:1.22 r:1.57)\n2026-04-14 |     3266 |    489 |  8194 |  47 |     29 | 85 | 7.73h(d:1.38 r:1.3)\n2026-04-15 |     3203 |    426 |  7363 |  47 |     20 | 87 | 8.98h(d:1.03 r:1.47)\n2026-04-16 |     3153 |    376 |  9059 |  46 |     26 | 100 | 6.23h(d:1.05 r:1.38)\n2026-04-17 |     3401 |    624 | 11106 |  46 |     22 | 85 | 7.98h(d:1.2 r:2.15)\n2026-04-18 |     2873 |     96 |  4149 |  46 |     20 | 100 | 9.03h(d:1.57 r:1.47)\n2026-04-19 |     2897 |    120 |  6311 |  45 |     24 | 100 | 8.38h(d:0.65 r:2.07)\n2026-04-20 |     3657 |    880 |  8677 |  45 |     33 | 84 | 6.18h(d:0.92 r:1.22)\n2026-04-21 |     3330 |    553 |  7989 |  45 |     46 | 74 | —\n2026-04-22 |     3539 |    762 | 12756 |  45 |     29 | 71 | 6.32h(d:0.95 r:1.6)\n2026-04-23 |     3599 |    822 | 11184 |  45 |     35 | 88 | 6.72h(d:0.73 r:1.53)\n2026-04-24 |     3427 |    650 | 10238 |  44 |     24 | 95 | 8.23h(d:0.52 r:2.05)\n2026-04-25 |     2836 |     59 |  2117 |  45 |     25 | 79 | 7.5h(d:1.05 r:1.43)\n2026-04-26 |     3072 |    295 |  5752 |  46 |     24 | 79 | 9.13h(d:1.7 r:2.2)\n2026-04-27 |     3346 |    569 | 10059 |  46 |     32 | 74 | 7.98h(d:1.48 r:1.5)\n2026-04-28 |     3416 |    639 | 11000 |  46 |     27 | 100 | 7.2h(d:1.27 r:1.35)\n2026-04-29 |     3393 |    616 | 10531 |  45 |     25 | 97 | 6.87h(d:1.07 r:1.68)\n2026-04-30 |     2999 |    222 |  5604 |  45 |     22 | 87 | 6.12h(d:0.45 r:2.13)\n2026-05-01 |     3006 |    229 |  4674 |  46 |     29 | 81 | 6.43h(d:0.92 r:1.35)\n2026-05-02 |     3138 |    361 |  8079 |  45 |     22 | 98 | 7.8h(d:0.75 r:2.0)\n2026-05-03 |     2166 |    736 |  8892 |  45 |     19 | 98 | 7.3h(d:1.57 r:1.72)\n\n=== KEY STATS SUMMARY ===\nAvg daily TDEE (total burn): 3210 kcal/day\nThis means: to lose 1lb/week Pete needs to eat ~2710 kcal/day\nAvg daily steps: 7455\nAvg resting HR: 46.5 bpm (excellent — reflects high fitness)\nTotal nights tracked: 332, avg sleep: 7.29h\nAvg deep sleep: 1.25h (target: 1.5-2.0h — BELOW target)\nAvg REM: 1.58h (adequate)\nNights under 7h: 143/332 (43%)
+
+TRAINING:
+- Last workout: ${w.lastDate} — ${w.lastType}: ${w.lastExercises}
+- Sessions/week: ~${w.sessionsPerWeek} | Last duration: ${w.lastDuration}min
+- 5-year history: 802 workout days (May 2021–May 2026), 340 unique exercises
+- Split: Push/Pull/Legs/Cardio rotation, ~25 days/month
+- Key lifts (current): DB Bench 60lb, Shoulder Press 40lb, Leg Press 340lb, Barbell Hip Thrust 160lb, Lat Pulldown 105lb, Machine Row 135-155lb, Pull-ups (unassisted, 4 reps/set)
+Recent workouts:
+${wHist}
+
+NUTRITION (today):
+- Calories: ${n.cals||'not logged'} | Protein: ${n.protein||'not logged'}g | Water: ${n.water||'not logged'}oz
+- Diet quality: ${n.dietQ||'not logged'}/10
+
+GOALS: ${g.goal}
+Target: ${g.targetWeight}lb / ${g.targetBF}% body fat
+
+KEY COACHING CONTEXT (CRITICAL — read carefully):
+- TDEE IS NOW KNOWN: Pete burns ~3,210 kcal/day on average. BMR is 2,500. Active burn ~450 kcal/day.
+- THE PLATEAU EXPLANATION: To lose 1lb/week Pete needs to eat ~2,710 kcal/day. He is almost certainly eating at or above 3,200 kcal/day. This is the plateau. It's a nutrition problem, not a training problem.
+- DEEP SLEEP IS CHRONICALLY LOW: Avg 1.25h/night vs 1.5-2.0h target. 43% of nights under 7h total. Low deep sleep = suppressed GH release = impaired fat metabolism and muscle repair.
+- STRESS IS EXCELLENT: Avg 25/100 — very low. Not a cortisol issue. Stress is not the problem.
+- RHR IS EXCELLENT: 46.5 bpm — reflects strong cardiovascular fitness, top 10% for his age.
+- BODY BATTERY IS STRONG: Avg daily high 86/100 — well recovered most days.
+- VO2max peaked Feb 2026 (43.0), now 40.0 — declining due to fewer running sessions in April.
+- Visceral fat at 15 is a health priority — will come down with sustained caloric deficit.
+- Fat-free mass stable at ~224lb — not losing muscle despite the plateau.
+- The single highest-leverage intervention: track and reduce daily calories to 2,600-2,800 kcal.
+
+Today: ${new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'})}
+
+When Pete shares a screenshot or describes what he sees in an app, extract the data, update your understanding, and tell him what you extracted. When data is updated, summarize what changed.`;
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────
+async function sendMessage(overrideText) {
+  const input = document.getElementById('chat-input');
+  const text = overrideText || input.value.trim();
+  if (!text && !pendingImage) return;
+  if (loading) return;
+  input.value = ''; autoResize(input);
+
+  // Build user message content
+  let userContent = [];
+  if (pendingImage) {
+    userContent.push({ type:'image', source:{ type:'base64', media_type: pendingImage.mimeType, data: pendingImage.base64 }});
+    addImageBubble(pendingImage.preview, text);
+    pendingImage = null;
+  } else {
+    addBubble('user', text);
+  }
+  if (text) userContent.push({ type:'text', text });
+  if (userContent.length === 1 && userContent[0].type === 'text') userContent = text;
+
+  messages.push({ role:'user', content: userContent });
+
+  loading = true;
+  document.getElementById('send-btn').disabled = true;
+  const tid = addTyping();
+
+  try {
+    const res = await fetch('/api/claude', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1000,
+        system: buildPrompt(),
+        messages: messages
+      })
+    });
+    const data = await res.json();
+    removeTyping(tid);
+
+    const reply = data.content?.map(b=>b.text||'').join('') || 'Connection error, try again.';
+    messages.push({ role:'assistant', content: reply });
+    addBubble('coach', reply);
+
+    // Try to extract & persist any data updates from the reply
+    await tryExtractAndSave(reply, text);
+
+  } catch(e) {
+    removeTyping(tid);
+    addBubble('coach', 'Connection error. Please try again.');
+  }
+
+  loading = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+// ── SCREENSHOT HANDLER ────────────────────────────────────────────────
+function handleScreenshot(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    const base64 = dataUrl.split(',')[1];
+    pendingImage = { base64, mimeType: file.type, preview: dataUrl };
+    document.getElementById('chat-input').value = '';
+    document.getElementById('chat-input').placeholder = '📎 Screenshot ready — add a note or just hit send to scan it...';
+    document.getElementById('chat-input').focus();
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+// ── DATA EXTRACTION from AI responses ────────────────────────────────
+async function tryExtractAndSave(reply, userText) {
+  const r = reply.toLowerCase();
+  const u = (userText||'').toLowerCase();
+  let changed = false;
+
+  // Weight extraction
+  const wm = reply.match(/weight[:\s]+(\d{2,3}\.?\d?)\s*(?:lb|lbs|pounds)/i) ||
+             reply.match(/(\d{2,3}\.?\d?)\s*(?:lb|lbs|pounds)/i) ||
+             userText?.match(/(\d{2,3}\.?\d?)\s*(?:lb|lbs|pounds)/i);
+  if (wm && parseFloat(wm[1]) > 200 && parseFloat(wm[1]) < 400) {
+    const w = parseFloat(wm[1]);
+    if (w !== db.body.weight) {
+      db.body.weight = w;
+      db.body.weightDate = new Date().toISOString().split('T')[0];
+      db.body.history.push({date: db.body.weightDate, w});
+      if (w < db.body.atl) db.body.atl = w;
+      changed = true;
+    }
+  }
+
+  // Sleep extraction
+  const sm = reply.match(/slept?\s+(\d+\.?\d*)\s*(?:hours?|hrs?)/i) ||
+             reply.match(/sleep[:\s]+(\d+\.?\d*)\s*(?:hours?|hrs?)/i) ||
+             userText?.match(/slept?\s+(\d+\.?\d*)\s*(?:hours?|hrs?)/i);
+  if (sm && parseFloat(sm[1]) > 2 && parseFloat(sm[1]) < 14) {
+    db.recovery.sleep = parseFloat(sm[1]); changed = true;
+  }
+
+  // VO2max
+  const vm = reply.match(/vo2\s*max[:\s]+(\d{2}\.?\d?)/i) || userText?.match(/vo2\s*max[:\s]+(\d{2}\.?\d?)/i);
+  if (vm) { db.recovery.vo2 = parseFloat(vm[1]); changed = true; }
+
+  // HRV
+  const hm = reply.match(/hrv[:\s]+(\d{2,3})\s*(?:ms)?/i) || userText?.match(/hrv[:\s]+(\d{2,3})/i);
+  if (hm) { db.recovery.hrv = parseInt(hm[1]); changed = true; }
+
+  // Body Battery
+  const bm = reply.match(/body\s*battery[:\s]+(\d{1,3})/i) || userText?.match(/body\s*battery[:\s]+(\d{1,3})/i);
+  if (bm) { db.recovery.bb = parseInt(bm[1]); changed = true; }
+
+  // Stress
+  const stm = reply.match(/stress[:\s]+(\d{1,3})/i) || userText?.match(/stress[:\s]+(\d{1,3})/i);
+  if (stm && parseInt(stm[1]) <= 100) { db.recovery.stress = parseInt(stm[1]); changed = true; }
+
+  if (changed) {
+    await saveDB();
+    updateSidebar();
+  }
+}
+
+// ── CHECK-IN FLOW ─────────────────────────────────────────────────────
+function startCheckin() {
+  addBubble('coach', `Quick daily check-in. I'll ask you a few things to update your data — takes 60 seconds.<br><br><strong>1. What did you weigh this morning (or your most recent weigh-in)?</strong><br><span style="font-size:11px;color:var(--muted)">Type the number in lbs, or skip if you didn't weigh in.</span>`);
+  document.getElementById('chat-input').focus();
+  document.getElementById('chat-input').placeholder = 'e.g. 281.4 lbs...';
+}
+
+// ── WELCOME MESSAGE ───────────────────────────────────────────────────
+function showWelcome() {
+  document.getElementById('session-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('ch-sub').textContent = `Data synced · ${db.meta?.lastUpdated || 'today'} · all sources loaded`;
+
+  const b = db.body, r = db.recovery;
+  const aboveLow = b.weight && b.atl ? (b.weight - b.atl).toFixed(1) : '4.4';
+  addBubble('coach', `Good to see you. Your full Garmin data is now loaded — I finally have the missing piece.<br><br>
+<strong>Your TDEE is 3,210 kcal/day.</strong> That's what you burn. Your BMR alone is 2,500. The plateau is almost certainly a calorie balance problem — you're probably eating close to maintenance without realizing it.<br><br>
+<strong>${b.weight}lb</strong> · ${aboveLow}lb above low · visceral fat ${b.vf} · VO2max ${r.vo2} · RHR 45 bpm (excellent) · deep sleep avg 1.25h (below target)<br><br>
+To update data: tap a source in the sidebar, hit <strong>+ Check-in</strong>, or <strong>upload a screenshot</strong> from any app. I'll read it and log it automatically.<br><br>
+What do you want to tackle first?`);
+}
+
+// ── PHOTO HANDLER ─────────────────────────────────────────────────────
+function triggerPhoto(side) { document.getElementById('file-photo-'+side).click(); }
+function handlePhoto(event, side) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    db.photos[side] = e.target.result;
+    db.photos.date = new Date().toISOString().split('T')[0];
+    saveDB();
+    const slot = document.getElementById('photo-'+side+'-slot');
+    slot.innerHTML = `<img src="${e.target.result}"><div class="overlay">${side} · ${db.photos.date}</div>`;
+    addBubble('coach', `Progress photo (${side}) saved for ${db.photos.date}. I'll reference it when you ask about visual changes.`);
+  };
+  reader.readAsDataURL(file);
+  event.target.value='';
+}
+
+// ── DATA TAB — MANUAL SAVE ────────────────────────────────────────────
+function saveSection(section) {
+  const g = id => { const el=document.getElementById('f-'+id); return el?.value||null; };
+  if (section==='body') {
+    if(g('weight')) db.body.weight = parseFloat(g('weight'));
+    if(g('bf')) db.body.bf = parseFloat(g('bf'));
+    if(g('ffm')) db.body.ffm = parseFloat(g('ffm'));
+    if(g('muscle')) db.body.muscle = parseFloat(g('muscle'));
+    if(g('vf')) db.body.vf = parseInt(g('vf'));
+    if(g('bmr')) db.body.bmr = parseInt(g('bmr'));
+    if(g('weight-date')) db.body.weightDate = g('weight-date');
+    if(g('atl')) db.body.atl = parseFloat(g('atl'));
+    if(g('weight')) db.body.history.push({date: g('weight-date')||new Date().toISOString().split('T')[0], w: parseFloat(g('weight'))});
+  } else if (section==='recovery') {
+    if(g('sleep')) db.recovery.sleep = parseFloat(g('sleep'));
+    if(g('sleepq')) db.recovery.sleepQ = parseInt(g('sleepq'));
+    if(g('hrv')) db.recovery.hrv = parseInt(g('hrv'));
+    if(g('bb')) db.recovery.bb = parseInt(g('bb'));
+    if(g('rhr')) db.recovery.rhr = parseInt(g('rhr'));
+    if(g('stress')) db.recovery.stress = parseInt(g('stress'));
+    if(g('vo2')) db.recovery.vo2 = parseFloat(g('vo2'));
+    if(g('steps')) db.recovery.steps = parseInt(g('steps'));
+  } else if (section==='workout') {
+    const entry = {
+      date: g('wdate')||new Date().toISOString().split('T')[0],
+      type: g('wtype')||'',
+      ex: g('wex')||''
+    };
+    db.workout.lastDate = entry.date;
+    db.workout.lastType = entry.type;
+    db.workout.lastExercises = entry.ex;
+    if(g('wdur')) db.workout.lastDuration = parseInt(g('wdur'));
+    if(g('weff')) db.workout.lastEffort = parseInt(g('weff'));
+    db.workout.history.unshift(entry);
+    if (db.workout.history.length > 30) db.workout.history = db.workout.history.slice(0,30);
+  } else if (section==='nutrition') {
+    if(g('cals')) db.nutrition.cals = parseInt(g('cals'));
+    if(g('protein')) db.nutrition.protein = parseInt(g('protein'));
+    if(g('water')) db.nutrition.water = parseInt(g('water'));
+    if(g('dietq')) db.nutrition.dietQ = parseInt(g('dietq'));
+  } else if (section==='goals') {
+    if(g('goal')) db.goals.goal = g('goal');
+    if(g('tweight')) db.goals.targetWeight = parseFloat(g('tweight'));
+    if(g('tbf')) db.goals.targetBF = parseFloat(g('tbf'));
+  }
+  saveDB();
+  renderCharts();
+  const btn = event?.target;
+  if(btn){ const orig=btn.textContent; btn.textContent='✓ Saved'; btn.style.background='var(--accent2)'; setTimeout(()=>{btn.textContent=orig;btn.style.background='';},1500); }
+}
+
+function populateDataFields() {
+  const s = (id, val) => { const el=document.getElementById('f-'+id); if(el&&val) el.value=val; };
+  const b=db.body, r=db.recovery, w=db.workout, n=db.nutrition, g=db.goals;
+  s('weight',b.weight); s('bf',b.bf); s('ffm',b.ffm); s('muscle',b.muscle);
+  s('vf',b.vf); s('bmr',b.bmr); s('weight-date',b.weightDate); s('atl',b.atl);
+  s('sleep',r.sleep); s('sleepq',r.sleepQ); s('hrv',r.hrv); s('bb',r.bb);
+  s('rhr',r.rhr); s('stress',r.stress); s('vo2',r.vo2); s('steps',r.steps);
+  s('wdate',w.lastDate); s('wtype',w.lastType); s('wex',w.lastExercises);
+  s('wdur',w.lastDuration); s('weff',w.lastEffort);
+  s('cals',n.cals); s('protein',n.protein); s('water',n.water); s('dietq',n.dietQ);
+  s('goal',g.goal); s('tweight',g.targetWeight); s('tbf',g.targetBF);
+}
+
+// ── CHARTS ────────────────────────────────────────────────────────────
+let charts = {};
+function renderCharts() {
+  const co = { responsive:true, plugins:{legend:{display:false}},
+    scales:{ x:{ticks:{color:'#8a8f99',font:{size:9},maxTicksLimit:8}, grid:{color:'rgba(255,255,255,0.04)'}},
+              y:{ticks:{color:'#8a8f99',font:{size:9}}, grid:{color:'rgba(255,255,255,0.04)'}} }};
+
+  // Weight
+  const wh = db.body.history||[];
+  if (wh.length && document.getElementById('weightChart')) {
+    if(charts.weight) charts.weight.destroy();
+    charts.weight = new Chart(document.getElementById('weightChart'), {
+      type:'line',
+      data:{ labels: wh.map(d=>d.date.substring(5)), datasets:[{data:wh.map(d=>d.w), borderColor:'#c8f05a', backgroundColor:'rgba(200,240,90,0.06)', borderWidth:1.5, pointRadius:2, fill:true, tension:0.3}]},
+      options:{...co, plugins:{...co.plugins, title:{display:true, text:'Weight (lb)', color:'#8a8f99', font:{size:11}}}, scales:{...co.scales, y:{...co.scales.y, min:270, max:292}}}
+    });
+  }
+
+  // Sleep
+  const sh = db.recovery.sleepHistory||[];
+  if (sh.length && document.getElementById('sleepChart')) {
+    if(charts.sleep) charts.sleep.destroy();
+    charts.sleep = new Chart(document.getElementById('sleepChart'), {
+      type:'bar',
+      data:{ labels: sh.map(d=>d.week.split(' ')[0]+' '+d.week.split(' ')[1]), datasets:[{data:sh.map(d=>d.h), backgroundColor: sh.map(d => d.h < 7 ? 'rgba(240,90,140,0.5)' : 'rgba(200,240,90,0.4)'), borderRadius:3}]},
+      options:{...co, plugins:{...co.plugins, title:{display:true, text:'Sleep (hrs/week avg)', color:'#8a8f99', font:{size:11}}}, scales:{...co.scales, y:{...co.scales.y, min:5, max:9}}}
+    });
+  }
+
+  // VO2max
+  const vh = db.recovery.vo2History||[];
+  if (vh.length && document.getElementById('vo2Chart')) {
+    if(charts.vo2) charts.vo2.destroy();
+    charts.vo2 = new Chart(document.getElementById('vo2Chart'), {
+      type:'line',
+      data:{ labels: vh.map(d=>d.month.split(' ')[0]), datasets:[{data:vh.map(d=>d.v), borderColor:'#5af0c8', backgroundColor:'rgba(90,240,200,0.06)', borderWidth:1.5, pointRadius:3, fill:true, tension:0.3}]},
+      options:{...co, plugins:{...co.plugins, title:{display:true, text:'VO2max', color:'#8a8f99', font:{size:11}}}, scales:{...co.scales, y:{...co.scales.y, min:38, max:44}}}
+    });
+  }
+}
+
+// ── UI HELPERS ────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.ntab').forEach((t,i)=>t.classList.toggle('active',['coach','data','progress'][i]===tab));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+  if(tab==='progress') setTimeout(renderCharts,100);
+}
+
+function sendQuick(text) {
+  document.getElementById('chat-input').value = text;
+  sendMessage(text);
+  document.getElementById('chat-input').value = '';
+}
+
+function addBubble(who, html) {
+  const msgs = document.getElementById('messages');
+  const time = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const isCoach = who==='coach';
+  const div = document.createElement('div');
+  div.className = 'msg'+(isCoach?'':' user');
+  div.innerHTML = `<div class="avatar ${isCoach?'av-coach':'av-user'}">${isCoach?'AI':'Pete'}</div>
+    <div><div class="bubble ${isCoach?'bc-coach':'bc-user'}">${formatMsg(html)}</div>
+    <div class="bmeta">${isCoach?'Coach':'Pete'} · ${time}</div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addImageBubble(preview, caption) {
+  const msgs = document.getElementById('messages');
+  const time = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = `<div class="avatar av-user">Pete</div>
+    <div><div class="bubble bc-user">
+      ${caption ? `<div style="margin-bottom:6px">${formatMsg(caption)}</div>` : ''}
+      <img src="${preview}" class="img-preview">
+    </div><div class="bmeta">Pete · ${time}</div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function formatMsg(t) {
+  return (t||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+}
+
+let tc=0;
+function addTyping() {
+  const id='t'+(++tc), msgs=document.getElementById('messages'), div=document.createElement('div');
+  div.className='msg'; div.id=id;
+  div.innerHTML=`<div class="avatar av-coach">AI</div><div class="bubble bc-coach"><div class="typing"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>`;
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight; return id;
+}
+function removeTyping(id) { document.getElementById(id)?.remove(); }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+
+// ── INIT ──────────────────────────────────────────────────────────────
+loadDB();
+</script>
+</body>
+</html>
