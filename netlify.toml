@@ -6,15 +6,3 @@
   to = "/.netlify/functions/claude"
   status = 200
   force = true
-
-[[redirects]]
-  from = "/api/health-sync"
-  to = "/.netlify/functions/health-sync"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/workout-sync"
-  to = "/.netlify/functions/workout-sync"
-  status = 200
-  force = true
