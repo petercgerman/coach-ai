@@ -11,14 +11,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
-  // Auth
-  const token = process.env.HEALTH_SYNC_TOKEN;
-  if (token) {
-    const auth = event.headers['authorization'] || event.headers['Authorization'] || '';
-    if (auth !== `Bearer ${token}`) {
-      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorized' }) };
-    }
-  }
+  // No auth required for personal use
 
   try {
     const payload = JSON.parse(event.body);
