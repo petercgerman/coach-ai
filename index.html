@@ -795,43 +795,49 @@ function updateSrcBadge(src, date) {
 // ── SYSTEM PROMPT ─────────────────────────────────────────────────────
 function buildPrompt() {
   const b = db.body, r = db.recovery, w = db.workout, n = db.nutrition, g = db.goals;
-  const wHist = (w.history||[]).slice(0,10).map(h=>`  ${h.date} [${h.type}]: ${h.ex}`).join('\n');
-  const bHist = (b.history||[]).slice(-8).map(h=>`  ${h.date}: ${h.w}lb`).join('\n');
-  const sHist = (r.sleepHistory||[]).slice(-8).map(h=>`  ${h.week}: ${h.h}h`).join('\n');
-  const v2Hist = (r.vo2History||[]).map(h=>`  ${h.month}: ${h.v}`).join('\n');
+  const today = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
 
-  return `You are Pete's personal AI health and performance coach. You are direct, data-driven, brutally honest, and give specific actionable advice. You speak like a brilliant knowledgeable friend — never corporate or generic.
+  const fmt = v => v != null ? v : 'not logged';
 
-PETE'S LIVE HEALTH DATA (as of ${db.meta?.lastUpdated || 'today'}):
+  const wHist = (w.history||[]).slice(0,10).map(h=>`  ${h.date} [${h.type||'?'}]: ${h.ex||'?'}`).join('\n') || '  No workout history yet';
+  const bHist = (b.history||[]).slice(-8).map(h=>`  ${h.date}: ${h.w}lb`).join('\n') || '  No weight history yet';
+
+  return `You are Pete\'s personal AI health and performance coach. You are direct, data-driven, brutally honest, and give specific actionable recommendations. You speak like a brilliant knowledgeable friend.
+
+When data fields show "not logged" or null, acknowledge the gap and suggest Pete sync Apple Health or do a check-in. Never fabricate numbers.
+
+PETE\'S LIVE HEALTH DATA (as of ${db.meta?.lastSync || today}):
 
 BODY COMPOSITION:
-- Weight: ${b.weight}lb (last weighed: ${b.weightDate})
-- Body fat: ${b.bf}% | Fat-free mass: ${b.ffm}lb | Muscle: ${b.muscle}lb
-- Visceral fat: ${b.vf}/59 (elevated — target <12) | BMR: ${b.bmr} kcal
-- All-time low: ${b.atl}lb | Currently ${b.weight && b.atl ? (b.weight-b.atl).toFixed(1) : '?'}lb above low
-- NOTE: Scale recalibrated Jan 19 2026 — BF% jumped from ~32% to ~20% algorithmically, not real change
+- Weight: ${fmt(b.weight)}lb (last weighed: ${fmt(b.weightDate)})
+- Body fat: ${fmt(b.bf)}% | Fat-free mass: ${fmt(b.ffm)}lb
+- Visceral fat: ${fmt(b.vf)} (target <12) | BMR: ${fmt(b.bmr)} kcal
+- All-time low: ${fmt(b.atl)}lb
 Weight history (recent):
 ${bHist}
 
 RECOVERY & FITNESS:
-- Last sleep: ${r.sleep}h${r.sleepQ ? ` (quality: ${r.sleepQ}/10)` : ''}
-- HRV: ${r.hrv||'not logged'} | Body Battery: ${r.bb||'not logged'} | Resting HR: ${r.rhr||'not logged'}
-- Stress score: ${r.stress||'not logged'} | VO2max: ${r.vo2} | Steps: ${r.steps||'not logged'}
-- Sleep pattern: avg 7h17min/week over 52 weeks, 27% of weeks under 7h
-- Worst stretch: Oct-Nov 2025 (6h 12min–6h 43min, late bedtimes >11:30pm)
-- Best stretch: Feb-Mar 2026 (8h+, earlier bedtimes)
-Sleep history (recent weeks):
-${sHist}
-VO2max history:
-${v2Hist}
-
-GARMIN FULL DATASET:
-=== GARMIN MONTHLY AVERAGES (May 2025 – May 2026) ===\nMonth      | TotalCal | Steps | RHR | Stress | BB_hi | Sleep | Deep | REM\n2025-05   |     3167 |  6819 |  46 |     27 |    86 |  7.03 | 1.06 | 1.53\n2025-06   |     3320 |  7912 |  46 |     26 |    87 |  6.89 | 1.05 | 1.56\n2025-07   |     3246 |  7537 |  46 |     27 |    80 |  6.99 | 1.16 | 1.51\n2025-08   |     3130 |  6881 |  47 |     27 |    86 |  7.59 | 1.20 | 1.65\n2025-09   |     3218 |  7620 |  46 |     27 |    86 |  7.58 | 1.01 | 1.59\n2025-10   |     3211 |  6917 |  47 |     26 |    84 |  7.10 | 1.22 | 1.61\n2025-11   |     3280 |  8372 |  47 |     24 |    91 |  7.17 | 1.20 | 1.60\n2025-12   |     3176 |  6870 |  47 |     24 |    86 |  7.01 | 1.28 | 1.50\n2026-01   |     3148 |  7000 |  47 |     24 |    89 |  7.45 | 1.42 | 1.66\n2026-02   |     3164 |  7001 |  47 |     25 |    88 |  7.53 | 1.37 | 1.58\n2026-03   |     3217 |  7739 |  47 |     25 |    83 |  7.73 | 1.91 | 1.50\n2026-04   |     3295 |  8876 |  46 |     27 |    87 |  7.44 | 1.10 | 1.61\n2026-05   |     2770 |  7215 |  45 |     23 |    92 |  7.18 | 1.08 | 1.69\n\n=== DAILY LOG (last 60 days: Mar 4 – May 3 2026) ===\nDate       | TotalCal | Active | Steps | RHR | Stress | BB | Sleep(deep/rem)\n2026-03-04 |     3513 |    736 |  9576 |  47 |     26 | 88 | 6.42h(d:1.4 r:0.93)\n2026-03-05 |     3119 |    342 |  7235 |  47 |     23 | 98 | 8.93h(d:0.88 r:2.4)\n2026-03-06 |     2822 |     45 |   671 |  47 |     26 | 56 | 9.0h(d:6.95 r:0.0)\n2026-03-07 |     3246 |    469 |  8630 |  47 |     29 | 70 | 7.32h(d:1.87 r:0.98)\n2026-03-08 |     3398 |    621 | 12147 |  47 |     25 | 71 | 9.4h(d:0.97 r:2.38)\n2026-03-09 |     3161 |    384 |  8382 |  47 |     25 | 82 | 6.3h(d:1.05 r:1.27)\n2026-03-10 |     3669 |    892 |  8096 |  47 |     31 | 92 | 7.65h(d:1.6 r:1.53)\n2026-03-11 |     3336 |    559 | 10138 |  47 |     29 | 43 | 9.13h(d:8.92 r:0.0)\n2026-03-12 |     3436 |    659 |  9219 |  48 |     21 | 98 | 7.13h(d:0.38 r:2.17)\n2026-03-13 |     3196 |    419 |  8318 |  47 |     21 | 100 | 7.63h(d:0.57 r:2.47)\n2026-03-14 |     2971 |    194 |  5876 |  46 |     25 | 87 | 7.27h(d:1.72 r:1.92)\n2026-03-15 |     2913 |    136 |  4747 |  46 |     26 | 84 | 7.17h(d:1.53 r:0.62)\n2026-03-16 |     2812 |     35 |  1626 |  46 |     22 | 67 | 9.13h(d:6.98 r:0.0)\n2026-03-17 |     3071 |    294 |  7580 |  46 |     23 | 100 | 7.73h(d:0.83 r:2.58)\n2026-03-18 |     2980 |    203 |  6134 |  46 |     20 | 82 | 8.78h(d:1.87 r:1.52)\n2026-03-19 |     3064 |    287 |  6291 |  46 |     24 | 88 | 6.83h(d:1.95 r:1.42)\n2026-03-20 |     2853 |     76 |  4195 |  46 |     23 | 100 | 8.25h(d:0.67 r:2.3)\n2026-03-21 |     3132 |    355 |  8163 |  46 |     27 | 90 | 8.07h(d:1.15 r:1.63)\n2026-03-22 |     3514 |    737 |  9158 |  47 |     40 | 84 | —\n2026-03-23 |     3233 |    456 |  8734 |  47 |     22 | 72 | 6.1h(d:1.1 r:0.4)\n2026-03-24 |     3345 |    568 |  8584 |  47 |     27 | 92 | 7.4h(d:0.9 r:1.9)\n2026-03-25 |     3401 |    624 | 11219 |  47 |     30 | 79 | 6.32h(d:1.75 r:1.63)\n2026-03-26 |     3546 |    769 | 11645 |  47 |     21 | 76 | 6.97h(d:1.08 r:1.58)\n2026-03-27 |     3167 |    390 |  8424 |  48 |     22 | 95 | 6.43h(d:1.35 r:1.75)\n2026-03-28 |     3284 |    507 |  9011 |  48 |     26 | 84 | 8.87h(d:1.8 r:2.38)\n2026-03-29 |     2848 |     71 |  3925 |  47 |     24 | 73 | —\n2026-03-30 |     3517 |    740 | 10033 |  47 |     30 | 100 | 10.07h(d:1.98 r:2.03)\n2026-03-31 |     3715 |    938 |  9635 |  47 |     23 | 81 | 6.68h(d:0.5 r:0.72)\n2026-04-01 |     3106 |    329 |  6933 |  47 |     21 | 94 | 6.83h(d:0.8 r:1.42)\n2026-04-02 |     3135 |    625 | 11199 |  46 |     22 | 100 | 7.37h(d:1.03 r:1.7)\n2026-04-03 |     3323 |    546 | 11664 |  47 |     37 | 83 | —\n2026-04-04 |     2946 |    169 |  6186 |  47 |     22 | 82 | 6.18h(d:1.33 r:1.08)\n2026-04-05 |     2998 |    221 |  5235 |  47 |     23 | 73 | 8.17h(d:1.88 r:1.85)\n2026-04-06 |     3239 |    462 |  8306 |  47 |     22 | 100 | 6.65h(d:0.27 r:1.88)\n2026-04-07 |     3481 |    704 | 10761 |  46 |     30 | 100 | 6.88h(d:0.75 r:1.48)\n2026-04-08 |     3201 |    424 |  7828 |  47 |     19 | 94 | 10.1h(d:1.03 r:2.35)\n2026-04-09 |     3267 |    490 |  7647 |  47 |     29 | 98 | 8.05h(d:1.4 r:1.72)\n2026-04-10 |     4128 |   1351 | 15541 |  47 |     39 | 63 | 5.8h(d:1.85 r:0.5)\n2026-04-11 |     3532 |    755 | 13139 |  46 |     23 | 79 | —\n2026-04-12 |     3525 |    748 |  7735 |  46 |     29 | 100 | 7.37h(d:1.05 r:1.35)\n2026-04-13 |     3555 |    778 | 12010 |  46 |     33 | 72 | 6.92h(d:1.22 r:1.57)\n2026-04-14 |     3266 |    489 |  8194 |  47 |     29 | 85 | 7.73h(d:1.38 r:1.3)\n2026-04-15 |     3203 |    426 |  7363 |  47 |     20 | 87 | 8.98h(d:1.03 r:1.47)\n2026-04-16 |     3153 |    376 |  9059 |  46 |     26 | 100 | 6.23h(d:1.05 r:1.38)\n2026-04-17 |     3401 |    624 | 11106 |  46 |     22 | 85 | 7.98h(d:1.2 r:2.15)\n2026-04-18 |     2873 |     96 |  4149 |  46 |     20 | 100 | 9.03h(d:1.57 r:1.47)\n2026-04-19 |     2897 |    120 |  6311 |  45 |     24 | 100 | 8.38h(d:0.65 r:2.07)\n2026-04-20 |     3657 |    880 |  8677 |  45 |     33 | 84 | 6.18h(d:0.92 r:1.22)\n2026-04-21 |     3330 |    553 |  7989 |  45 |     46 | 74 | —\n2026-04-22 |     3539 |    762 | 12756 |  45 |     29 | 71 | 6.32h(d:0.95 r:1.6)\n2026-04-23 |     3599 |    822 | 11184 |  45 |     35 | 88 | 6.72h(d:0.73 r:1.53)\n2026-04-24 |     3427 |    650 | 10238 |  44 |     24 | 95 | 8.23h(d:0.52 r:2.05)\n2026-04-25 |     2836 |     59 |  2117 |  45 |     25 | 79 | 7.5h(d:1.05 r:1.43)\n2026-04-26 |     3072 |    295 |  5752 |  46 |     24 | 79 | 9.13h(d:1.7 r:2.2)\n2026-04-27 |     3346 |    569 | 10059 |  46 |     32 | 74 | 7.98h(d:1.48 r:1.5)\n2026-04-28 |     3416 |    639 | 11000 |  46 |     27 | 100 | 7.2h(d:1.27 r:1.35)\n2026-04-29 |     3393 |    616 | 10531 |  45 |     25 | 97 | 6.87h(d:1.07 r:1.68)\n2026-04-30 |     2999 |    222 |  5604 |  45 |     22 | 87 | 6.12h(d:0.45 r:2.13)\n2026-05-01 |     3006 |    229 |  4674 |  46 |     29 | 81 | 6.43h(d:0.92 r:1.35)\n2026-05-02 |     3138 |    361 |  8079 |  45 |     22 | 98 | 7.8h(d:0.75 r:2.0)\n2026-05-03 |     2166 |    736 |  8892 |  45 |     19 | 98 | 7.3h(d:1.57 r:1.72)\n\n=== KEY STATS SUMMARY ===\nAvg daily TDEE (total burn): 3210 kcal/day\nThis means: to lose 1lb/week Pete needs to eat ~2710 kcal/day\nAvg daily steps: 7455\nAvg resting HR: 46.5 bpm (excellent — reflects high fitness)\nTotal nights tracked: 332, avg sleep: 7.29h\nAvg deep sleep: 1.25h (target: 1.5-2.0h — BELOW target)\nAvg REM: 1.58h (adequate)\nNights under 7h: 143/332 (43%)
+- Last sleep: ${fmt(r.sleep)}h | Deep: ${fmt(r.deepSleep)}h | REM: ${fmt(r.remSleep)}h
+- HRV: ${fmt(r.hrv)}ms | Resting HR: ${fmt(r.rhr)} bpm | VO2max: ${fmt(r.vo2)}
+- Steps: ${fmt(r.steps)} | Active calories: ${fmt(r.activeCalories)} kcal
+- TDEE (total daily burn): ${fmt(r.tdee)} kcal
+- Body Battery: ${fmt(r.bb)} | Stress: ${fmt(r.stress)}
 
 TRAINING:
-- Last workout: ${w.lastDate} — ${w.lastType}: ${w.lastExercises}
-- Sessions/week: ~${w.sessionsPerWeek} | Last duration: ${w.lastDuration}mi\n/g,'<br><br>').replace(/\n/g,'<br>');
+- Last workout: ${fmt(w.lastDate)} — ${fmt(w.lastType)}: ${fmt(w.lastExercises)}
+- Duration: ${fmt(w.lastDuration)} min | Sessions/week: ${fmt(w.sessionsPerWeek)}
+Recent workouts:
+${wHist}
+
+NUTRITION (today):
+- Calories: ${fmt(n.cals)} | Protein: ${fmt(n.protein)}g | Water: ${fmt(n.water)}oz | Quality: ${fmt(n.dietQ)}/10
+
+GOALS: ${g.goal || 'Not set'}
+Target: ${fmt(g.targetWeight)}lb / ${fmt(g.targetBF)}% body fat
+
+Today: ${today}`;
 }
+
 
 let tc=0;
 function addTyping() {
@@ -932,9 +938,7 @@ async function fetchLiveHealth() {
     console.log('Live health data not available yet:', e.message); 
   }
 }
-</script>
-</body>
-</html>}
+}
 
 // ── CHAT ──────────────────────────────────────────────────────────────
 async function sendMessage(overrideText) {
