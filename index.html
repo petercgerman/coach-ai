@@ -419,7 +419,7 @@ async function loadDB() {
   updateDBStatus();
   renderCharts();
   populateDataFields();
-  showWelcome();
+  // showWelcome() called after fetchLatestHealthData() in init
 }
 
 async function saveDB() {
@@ -905,17 +905,16 @@ loadDB().then(() => {
 
 async function fetchLatestHealthData() {
   try {
-    // Poll health-sync for latest data (function caches last POST result in memory)
-    const res = await fetch('/.netlify/functions/health-sync?latest=1');
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.update && (data.update.body || data.update.recovery)) {
-        mergeHealthData(data.update, data.syncedAt);
-        updateSidebar();
-      }
+    const res = await fetch('/.netlify/functions/health-sync');
+    if (!res.ok) return;
+    const data = await res.json();
+    // Gist returns flat: { body:{}, recovery:{}, meta:{}, weightHistory:[] }
+    if (data && (data.body || data.recovery)) {
+      mergeHealthData(data);
     }
-  } catch(e) {}
-  updateSidebar();
+  } catch(e) {
+    console.log('Health sync read failed:', e.message);
+  }
 }
 
 function mergeHealthData(update, syncedAt) {
