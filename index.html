@@ -460,7 +460,7 @@ body{
           <div class="field-grid">
             <div class="field"><label>Date</label><input type="date" id="f-wdate"></div>
             <div class="field"><label>Type (Push/Pull/Legs/Cardio)</label><input type="text" id="f-wtype" placeholder="Push"></div>
-            <div class="field" style="grid-column:1/-1"><label>Exercises (brief summary)</label><input type="text" id="f-wex" placeholder="DB Bench 60lb, Shoulder Press 40lb, Skullcrusher 25lb..."></div>
+            <div class="field" style="grid-column:1/-1"><label>Exercises (brief summary)</label><input type="text" id="f-wex" placeholder="e.g. Bench Press, Squats, Pull-ups..."></div>
             <div class="field"><label>Duration (min)</label><input type="number" id="f-wdur" step="5" placeholder="45"></div>
             <div class="field"><label>Perceived effort (1-10)</label><input type="number" id="f-weff" step="1" min="1" max="10" placeholder="7"></div>
           </div>
@@ -542,49 +542,25 @@ const MODEL = "claude-haiku-4-5-20251001";
 // ── DEFAULT DATA (seeded from Pete's historical data) ──────────────────
 const DEFAULT_DB = {
   body: {
-    weight: 282.0, bf: 20.5, ffm: 224.2, muscle: 213.0,
-    vf: 15, bmr: 2500, weightDate: "2026-05-03", atl: 277.6,
-    history: [
-      {date:"2025-05-03",w:281.0},{date:"2025-06-01",w:282.4},{date:"2025-07-01",w:282.0},
-      {date:"2025-08-01",w:284.2},{date:"2025-09-01",w:282.4},{date:"2025-10-01",w:282.0},
-      {date:"2025-11-01",w:280.6},{date:"2025-12-01",w:279.6},{date:"2026-01-05",w:281.6},
-      {date:"2026-01-17",w:277.6},{date:"2026-02-01",w:281.6},{date:"2026-03-01",w:282.4},
-      {date:"2026-04-01",w:284.2},{date:"2026-04-26",w:284.6},{date:"2026-05-03",w:282.0}
-    ]
+    weight: null, bf: null, ffm: null, muscle: null,
+    vf: null, bmr: null, weightDate: null, atl: null,
+    history: []
   },
   recovery: {
-    sleep: 7.3, sleepQ: null, hrv: null, bb: 98,
-    rhr: 45, stress: 19, vo2: 40.0, steps: 8892,
-    sleepHistory: [
-      {week:"May 5-11 2025",h:6.8},{week:"May 26 2025",h:7.3},{week:"Jun 9 2025",h:7.1},
-      {week:"Jul 7 2025",h:6.8},{week:"Aug 4 2025",h:6.7},{week:"Sep 1 2025",h:7.9},
-      {week:"Oct 6 2025",h:7.6},{week:"Oct 27 2025",h:6.2},{week:"Nov 17 2025",h:6.7},
-      {week:"Dec 8 2025",h:7.0},{week:"Dec 22 2025",h:6.1},{week:"Jan 5 2026",h:7.5},
-      {week:"Jan 19 2026",h:8.1},{week:"Feb 9 2026",h:8.2},{week:"Mar 2 2026",h:8.1},
-      {week:"Apr 13 2026",h:7.9},{week:"Apr 27 2026",h:7.1}
-    ],
-    vo2History: [
-      {month:"Jun 2025",v:39.7},{month:"Jul 2025",v:39.6},{month:"Aug 2025",v:40.5},
-      {month:"Sep 2025",v:40.4},{month:"Oct 2025",v:41.1},{month:"Nov 2025",v:41.0},
-      {month:"Dec 2025",v:41.9},{month:"Jan 2026",v:42.0},{month:"Feb 2026",v:42.4},
-      {month:"Mar 2026",v:41.6},{month:"Apr 2026",v:40.3}
-    ]
+    sleep: null, sleepQ: null, hrv: null, bb: null,
+    rhr: null, stress: null, vo2: null, steps: null,
+    tdee: null, activeCalories: null, deepSleep: null, remSleep: null,
+    sleepHistory: [], vo2History: []
   },
   workout: {
-    lastDate: "2026-05-03", lastType: "Cardio", lastExercises: "Elliptical 45min",
-    lastDuration: 45, lastEffort: 6, sessionsPerWeek: 5,
-    history: [
-      {date:"2026-05-03",type:"Cardio",ex:"Elliptical 45min"},
-      {date:"2026-05-02",type:"Pull",ex:"Pull Ups, Preacher Curl 60lb, KB Row 26lb, Reverse Barbell Curl 50lb"},
-      {date:"2026-05-01",type:"Push",ex:"DB Bench 60lb, Shoulder Press 40lb, Skullcrusher 25lb, Fly 30lb"},
-      {date:"2026-04-29",type:"Legs",ex:"Leg Press 230lb, Hip Thrust 160lb, Leg Curl 110lb, Leg Ext 95lb"},
-      {date:"2026-04-23",type:"Pull",ex:"DB Row 50lb, Machine Row 135lb, Lat Pulldown 100lb, Bicep Curl 30lb"}
-    ]
+    lastDate: null, lastType: null, lastExercises: null,
+    lastDuration: null, lastEffort: null, sessionsPerWeek: null,
+    history: []
   },
   nutrition: { cals: null, protein: null, water: null, dietQ: null },
-  goals: { goal: "Lose fat, preserve muscle, get visceral fat under 12", targetWeight: 260, targetBF: 15 },
-  photos: { front: null, side: null, date: "2026-05-03" },
-  meta: { lastUpdated: "2026-05-03", version: 3 }
+  goals: { goal: 'Lose fat, preserve muscle, get visceral fat under 12', targetWeight: 260, targetBF: 15 },
+  photos: { front: null, side: null, date: null },
+  meta: { lastUpdated: null, lastSync: null, version: 4 }
 };
 
 // ── STATE ──────────────────────────────────────────────────────────────
@@ -777,7 +753,7 @@ function updateDBStatus() {
 // ── SIDEBAR METRICS ───────────────────────────────────────────────────
 function updateSidebar() {
   const b = db.body, r = db.recovery, w = db.workout;
-  set('s-weight', b.weight ? b.weight+'lb' : '—');
+  set('s-weight', b.weight ? b.weight+'lb' : 'syncing...');
   set('s-weight-d', b.atl ? `low: ${b.atl}lb` : '', 'neu');
   set('s-bf', b.bf ? b.bf+'%' : '—');
   set('s-bf-d', 'post-Jan scale', 'neu');
@@ -854,38 +830,111 @@ GARMIN FULL DATASET:
 
 TRAINING:
 - Last workout: ${w.lastDate} — ${w.lastType}: ${w.lastExercises}
-- Sessions/week: ~${w.sessionsPerWeek} | Last duration: ${w.lastDuration}min
-- 5-year history: 802 workout days (May 2021–May 2026), 340 unique exercises
-- Split: Push/Pull/Legs/Cardio rotation, ~25 days/month
-- Key lifts (current): DB Bench 60lb, Shoulder Press 40lb, Leg Press 340lb, Barbell Hip Thrust 160lb, Lat Pulldown 105lb, Machine Row 135-155lb, Pull-ups (unassisted, 4 reps/set)
-Recent workouts:
-${wHist}
-
-NUTRITION (today):
-- Calories: ${n.cals||'not logged'} | Protein: ${n.protein||'not logged'}g | Water: ${n.water||'not logged'}oz
-- Diet quality: ${n.dietQ||'not logged'}/10
-
-GOALS: ${g.goal}
-Target: ${g.targetWeight}lb / ${g.targetBF}% body fat
-
-KEY COACHING CONTEXT (CRITICAL — read carefully):
-- TDEE IS NOW KNOWN: Pete burns ~3,210 kcal/day on average. BMR is 2,500. Active burn ~450 kcal/day.
-- THE PLATEAU EXPLANATION: To lose 1lb/week Pete needs to eat ~2,710 kcal/day. He is almost certainly eating at or above 3,200 kcal/day. This is the plateau. It's a nutrition problem, not a training problem.
-- DEEP SLEEP IS CHRONICALLY LOW: Avg 1.25h/night vs 1.5-2.0h target. 43% of nights under 7h total. Low deep sleep = suppressed GH release = impaired fat metabolism and muscle repair.
-- STRESS IS EXCELLENT: Avg 25/100 — very low. Not a cortisol issue. Stress is not the problem.
-- RHR IS EXCELLENT: 46.5 bpm — reflects strong cardiovascular fitness, top 10% for his age.
-- BODY BATTERY IS STRONG: Avg daily high 86/100 — well recovered most days.
-- VO2max peaked Feb 2026 (43.0), now 40.0 — declining due to fewer running sessions in April.
-- Visceral fat at 15 is a health priority — will come down with sustained caloric deficit.
-- Fat-free mass stable at ~224lb — not losing muscle despite the plateau.
-- The single highest-leverage intervention: track and reduce daily calories to 2,600-2,800 kcal.
-
-Today: ${new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'})}
-Data source: Apple HealthKit via Health Auto Export (auto-syncing every 5 min)
-Last synced: ${db.meta?.lastSynced ? new Date(db.meta.lastSynced).toLocaleString() : 'using seeded historical data'}
-
-When Pete shares a screenshot or describes what he sees in an app, extract the data, update your understanding, and tell him what you extracted. When data is updated, summarize what changed.`;
+- Sessions/week: ~${w.sessionsPerWeek} | Last duration: ${w.lastDuration}mi\n/g,'<br><br>').replace(/\n/g,'<br>');
 }
+
+let tc=0;
+function addTyping() {
+  const id='t'+(++tc), msgs=document.getElementById('messages'), div=document.createElement('div');
+  div.className='msg'; div.id=id;
+  div.innerHTML=`<div class="avatar av-coach">AI</div><div class="bubble bc-coach"><div class="typing"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>`;
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight; return id;
+}
+function removeTyping(id) { document.getElementById(id)?.remove(); }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+// ── INIT ──────────────────────────────────────────────────────────────
+loadDB().then(() => {
+  // Auto-fetch latest health data from sync endpoint on load
+  fetchLatestHealthData();
+});
+
+async function fetchLatestHealthData() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    let changed = false;
+
+    // Fetch health metrics
+    const res = await fetch('/.netlify/functions/health-sync');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.update) {
+        if (data.update.body) {
+          Object.assign(db.body, data.update.body);
+          if (data.update.body.weight) {
+            const exists = db.body.history.some(h => h.date === today);
+            if (!exists) db.body.history.push({ date: today, w: data.update.body.weight });
+          }
+        }
+        if (data.update.recovery) Object.assign(db.recovery, data.update.recovery);
+        if (data.update.meta) db.meta = { ...db.meta, ...data.update.meta };
+        changed = true;
+      }
+    }
+
+    // Fetch latest workout
+    const wres = await fetch('/.netlify/functions/workout-sync');
+    if (wres.ok) {
+      const wdata = await wres.json();
+      if (wdata.workout) {
+        const w = wdata.workout;
+        db.workout.lastDate = w.date || today;
+        db.workout.lastType = w.type || db.workout.lastType;
+        db.workout.lastExercises = w.exercises || db.workout.lastExercises;
+        db.workout.lastDuration = w.duration || db.workout.lastDuration;
+        if (w.history?.length) {
+          // Merge new workouts into history
+          const existingDates = new Set((db.workout.history||[]).map(h => h.date));
+          w.history.filter(h => !existingDates.has(h.date)).forEach(h => db.workout.history.unshift(h));
+          db.workout.history = db.workout.history.slice(0, 30);
+        }
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await saveDB();
+      updateSidebar();
+      const syncDate = db.meta?.lastSync || today;
+      document.getElementById('ch-sub').textContent = `Data synced · ${syncDate}`;
+    }
+  } catch(e) {
+    // Silent fail — use local data
+  }
+}
+setTimeout(fetchLiveHealth, 1000);
+
+async function fetchLiveHealth() {
+  try {
+    const res = await fetch('/.netlify/functions/health-data');
+    const data = await res.json();
+    if (!data?.body && !data?.recovery) return; // no data yet
+    
+    // Merge live data into local DB
+    if (data.body?.weight) { db.body.weight = data.body.weight; db.body.weightDate = data.body.weightDate; }
+    if (data.body?.bf) db.body.bf = data.body.bf;
+    if (data.body?.ffm) db.body.ffm = data.body.ffm;
+    if (data.recovery?.rhr) db.recovery.rhr = data.recovery.rhr;
+    if (data.recovery?.hrv) db.recovery.hrv = data.recovery.hrv;
+    if (data.recovery?.vo2) db.recovery.vo2 = data.recovery.vo2;
+    if (data.recovery?.steps) db.recovery.steps = data.recovery.steps;
+    if (data.recovery?.sleep) db.recovery.sleep = data.recovery.sleep;
+    if (data.recovery?.deepSleep) db.recovery.deepSleep = data.recovery.deepSleep;
+    if (data.recovery?.tdee) db.recovery.tdee = data.recovery.tdee;
+    if (data.recovery?.activeCalories) db.recovery.activeCalories = data.recovery.activeCalories;
+    if (data.meta?.lastSync) db.meta.lastUpdated = data.meta.lastSync;
+    
+    updateSidebar();
+    updateDBStatus();
+    console.log('✓ Live health data loaded from Health Auto Export:', data.meta?.lastSync);
+  } catch(e) { 
+    console.log('Live health data not available yet:', e.message); 
+  }
+}
+</script>
+</body>
+</html>}
 
 // ── CHAT ──────────────────────────────────────────────────────────────
 async function sendMessage(overrideText) {
@@ -1024,12 +1073,12 @@ function showWelcome() {
   document.getElementById('ch-sub').textContent = `Data synced · ${db.meta?.lastUpdated || 'today'} · all sources loaded`;
 
   const b = db.body, r = db.recovery;
-  const aboveLow = b.weight && b.atl ? (b.weight - b.atl).toFixed(1) : '4.4';
-  const syncStatus = db.meta?.lastSync ? `Last synced: ${db.meta.lastSync}` : 'Auto-syncing from Apple Health';
-addBubble('coach', `Good to see you. Here's where you stand:<br><br>
-<strong>${b.weight}lb</strong> · ${aboveLow}lb above your low of ${b.atl}lb · visceral fat ${b.vf} (target &lt;12) · VO2max ${r.vo2} · RHR ${r.rhr||46} bpm<br><br>
-${syncStatus}. Your health data flows in automatically — just open the app and it's current. Hit <strong>+ Check-in</strong> to log something manually, or upload a screenshot from any health app.<br><br>
-What do you want to work on today?`);
+  const syncStatus = db.meta?.lastSync ? `Last synced ${db.meta.lastSync}` : 'Waiting for first sync';
+  const hasData = b.weight || r.sleep || r.rhr;
+  const snapshot = hasData
+    ? `<strong>${b.weight||'—'}lb</strong> · BF ${b.bf||'—'}% · sleep ${r.sleep||'—'}h · RHR ${r.rhr||'—'} bpm · VO2max ${r.vo2||'—'}`
+    : 'No health data yet — open Health Auto Export and tap Manual Export to sync your first batch.';
+addBubble('coach', `Good to see you. ${syncStatus}.<br><br>${snapshot}<br><br>Your data syncs automatically from Apple Health. Hit <strong>+ Check-in</strong> to log something manually, or upload a screenshot from any health app.<br><br>What do you want to work on today?`);
 }
 
 // ── PHOTO HANDLER ─────────────────────────────────────────────────────
