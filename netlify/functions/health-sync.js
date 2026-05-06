@@ -1,6 +1,4 @@
-// Health Auto Export v2 — stores data in Netlify Blobs
-const { getStore } = require('@netlify/blobs');
-
+// Health Auto Export v2 — parses and returns data, no storage dependency
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -11,22 +9,11 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
-  // GET — return current stored data (for the coach to read)
+  // GET — health check
   if (event.httpMethod === 'GET') {
-    try {
-      const store = getStore('pete-health');
-      const data = await store.get('latest', { type: 'json' });
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(data || { message: 'No data yet' }),
-      };
-    } catch (err) {
-      return { statusCode: 200, headers, body: JSON.stringify({ message: 'No data yet', error: err.message }) };
-    }
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, status: 'health-sync ready' }) };
   }
 
-  // POST — receive from Health Auto Export and store
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   try {
@@ -74,38 +61,17 @@ exports.handler = async (event) => {
       if (sleep.core) update.recovery.coreSleep = Math.round(sleep.core * 10) / 10;
     }
 
-    // Store in Netlify Blobs
-    const store = getStore('pete-health');
-    await store.setJSON('latest', update);
-
-    // Also store weight history entry
-    if (update.body.weight) {
-      try {
-        const history = await store.get('weight-history', { type: 'json' }) || [];
-        history.push({ date: today, w: update.body.weight });
-        // Keep last 365 entries
-        const trimmed = history.slice(-365);
-        await store.setJSON('weight-history', trimmed);
-      } catch(e) { /* history update optional */ }
-    }
-
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        ok: true,
-        received: metrics.length,
-        extracted: update,
-        stored: true,
-        syncedAt: today,
-      }),
+      body: JSON.stringify({ ok: true, received: metrics.length, update, syncedAt: today }),
     };
 
   } catch (err) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: err.message, stack: err.stack }),
+      body: JSON.stringify({ error: err.message }),
     };
   }
 };

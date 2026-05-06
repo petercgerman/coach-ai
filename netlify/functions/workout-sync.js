@@ -9,6 +9,12 @@ exports.handler = async (event) => {
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+
+  // GET — return last workout summary
+  if (event.httpMethod === 'GET') {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, status: 'workout-sync ready' }) };
+  }
+
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   // No auth required for personal use
