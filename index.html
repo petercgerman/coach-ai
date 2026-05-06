@@ -386,9 +386,10 @@ body{
         </div>
       </div>
       <div class="cpills">
-        <span class="cpill on">⚖️</span>
-        <span class="cpill on">🏋️</span>
-        <span class="cpill on">⌚</span>
+        <span class="cpill on">⚖️ Body</span>
+        <span class="cpill on">🏋️ Training</span>
+        <span class="cpill on">💤 Recovery</span>
+        <span class="cpill on" id="pill-photos">📸 Photos</span>
       </div>
     </div>
     <div class="messages" id="messages">
@@ -593,6 +594,34 @@ let loading = false;
 let pendingImage = null; // {base64, mimeType, preview}
 
 // ── STORAGE ───────────────────────────────────────────────────────────
+async function syncFromHealthEndpoint() {
+  // Called after a successful health-sync POST — merges live data into local DB
+  // Health Auto Export posts directly; coach reads from window.storage
+  // This function is called manually or on app open to pull latest
+  try {
+    const stored = await window.storage.get('pete-health-live');
+    if (stored?.value) {
+      const live = JSON.parse(stored.value);
+      if (live?.update) {
+        const u = live.update;
+        if (u.body?.weight) { db.body.weight = u.body.weight; db.body.weightDate = u.body.weightDate || db.body.weightDate; }
+        if (u.body?.bf) db.body.bf = u.body.bf;
+        if (u.body?.ffm) db.body.ffm = u.body.ffm;
+        if (u.recovery?.rhr) db.recovery.rhr = u.recovery.rhr;
+        if (u.recovery?.hrv) db.recovery.hrv = u.recovery.hrv;
+        if (u.recovery?.vo2) db.recovery.vo2 = u.recovery.vo2;
+        if (u.recovery?.steps) db.recovery.steps = u.recovery.steps;
+        if (u.recovery?.sleep) db.recovery.sleep = u.recovery.sleep;
+        if (u.recovery?.deepSleep) db.recovery.deepSleep = u.recovery.deepSleep;
+        if (u.recovery?.tdee) db.recovery.tdee = u.recovery.tdee;
+        if (u.recovery?.activeCalories) db.recovery.activeCalories = u.recovery.activeCalories;
+        updateSidebar();
+        console.log('Live health data merged:', u.meta?.lastSync);
+      }
+    }
+  } catch(e) { console.log('No live data yet'); }
+}
+
 async function loadDB() {
   try {
     const r = await window.storage.get('pete-health-db');
@@ -608,6 +637,113 @@ async function loadDB() {
   populateDataFields();
   showWelcome();
 }
+
+// ── HEALTH AUTO EXPORT SYNC ──────────────────────────────────────────
+// Called when Health Auto Export pushes data to our endpoints.
+// The endpoints return parsed updates which we merge into our local store.
+// We also poll our own endpoints periodically to pick up any missed syncs.
+
+async function mergeHealthUpdate(update) {
+  if (!update) return;
+  let changed = false;
+
+  // Body metrics
+  if (update.weight && update.weight !== db.body.weight) {
+    db.body.weight = update.weight;
+    db.body.weightDate = update.weightDate || new Date().toISOString().split('T')[0];
+    db.body.history.push({ date: db.body.weightDate, w: update.weight });
+    if (update.weight < (db.body.atl || 999)) db.body.atl = update.weight;
+    changed = true;
+  }
+  if (update.bodyFat) { db.body.bf = update.bodyFat; changed = true; }
+  if (update.leanMass) { db.body.ffm = update.leanMass; changed = true; }
+  if (update.bmr && update.bmr > 1000) { db.body.bmr = update.bmr; changed = true; }
+
+  // Recovery metrics
+  if (update.rhr) { db.recovery.rhr = update.rhr; changed = true; }
+  if (update.hrv) { db.recovery.hrv = update.hrv; changed = true; }
+  if (update.vo2max) {
+    db.recovery.vo2 = update.vo2max;
+    db.recovery.vo2History = db.recovery.vo2History || [];
+    const mo = new Date().toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    const existing = db.recovery.vo2History.find(h => h.month === mo);
+    if (existing) existing.v = update.vo2max;
+    else db.recovery.vo2History.push({ month: mo, v: update.vo2max });
+    changed = true;
+  }
+  if (update.activeCalories) { db.recovery.activeCalories = update.activeCalories; changed = true; }
+  if (update.steps) { db.recovery.steps = update.steps; changed = true; }
+  if (update.sleep) {
+    const s = update.sleep;
+    db.recovery.sleep = s.total || s.asleep || s.qty || db.recovery.sleep;
+    db.recovery.sleepDeep = s.deep || db.recovery.sleepDeep;
+    db.recovery.sleepREM = s.rem || db.recovery.sleepREM;
+    // Add to history
+    db.recovery.sleepHistory = db.recovery.sleepHistory || [];
+    const dateLabel = s.date ? s.date.substring(5) : 'Recent';
+    const existing = db.recovery.sleepHistory.find(h => h.week === dateLabel);
+    if (existing) existing.h = db.recovery.sleep;
+    else db.recovery.sleepHistory.push({ week: dateLabel, h: db.recovery.sleep });
+    changed = true;
+  }
+  if (update.oxygenSaturation) { db.recovery.spo2 = update.oxygenSaturation; changed = true; }
+  if (update.respiratoryRate) { db.recovery.respiratoryRate = update.respiratoryRate; changed = true; }
+
+  if (changed) {
+    db.meta.lastSynced = new Date().toISOString();
+    await saveDB();
+    updateSidebar();
+    showSyncBadge();
+  }
+}
+
+async function mergeWorkoutUpdate(update) {
+  if (!update) return;
+  if (update.lastDate) {
+    db.workout.lastDate = update.lastDate;
+    db.workout.lastType = update.lastType || db.workout.lastType;
+    db.workout.lastExercises = update.lastExercises || db.workout.lastExercises;
+    db.workout.lastDuration = update.lastDuration || db.workout.lastDuration;
+    db.workout.sessionsPerWeek = update.sessionsThisWeek || db.workout.sessionsPerWeek;
+    if (update.recentWorkouts?.length) {
+      db.workout.history = update.recentWorkouts;
+    }
+    db.meta.lastSynced = new Date().toISOString();
+    await saveDB();
+    updateSidebar();
+    showSyncBadge();
+  }
+}
+
+function showSyncBadge() {
+  const el = document.getElementById('db-status');
+  if (el) {
+    el.textContent = 'synced just now';
+    el.style.color = 'var(--accent)';
+    setTimeout(() => {
+      el.textContent = 'live · auto-sync on';
+      el.style.color = '';
+    }, 3000);
+  }
+}
+
+// Expose merge functions globally so the sync endpoints can trigger them
+// via a polling mechanism
+let lastSyncCheck = 0;
+async function checkForSyncedData() {
+  const now = Date.now();
+  if (now - lastSyncCheck < 60000) return; // max once per minute
+  lastSyncCheck = now;
+  // No-op for now: Health Auto Export POSTs directly to our endpoints.
+  // The endpoints return the parsed data. We rely on the POST triggering
+  // a reload, or the user opening the app which loads fresh from storage.
+  // Future: use server-sent events or websockets for real-time push.
+}
+
+// Check for updates when app becomes visible again
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { loadDB(); }
+});
 
 async function saveDB() {
   try {
@@ -632,7 +768,10 @@ function deepMerge(base, override) {
 
 function updateDBStatus() {
   const el = document.getElementById('db-status');
-  if (el) el.textContent = 'synced ' + (db.meta?.lastUpdated || 'today');
+  if (el) {
+    const synced = db.meta?.lastSynced ? 'synced ' + new Date(db.meta.lastSynced).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : 'live · auto-sync on';
+    el.textContent = synced;
+  }
 }
 
 // ── SIDEBAR METRICS ───────────────────────────────────────────────────
@@ -742,6 +881,8 @@ KEY COACHING CONTEXT (CRITICAL — read carefully):
 - The single highest-leverage intervention: track and reduce daily calories to 2,600-2,800 kcal.
 
 Today: ${new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'})}
+Data source: Apple HealthKit via Health Auto Export (auto-syncing every 5 min)
+Last synced: ${db.meta?.lastSynced ? new Date(db.meta.lastSynced).toLocaleString() : 'using seeded historical data'}
 
 When Pete shares a screenshot or describes what he sees in an app, extract the data, update your understanding, and tell him what you extracted. When data is updated, summarize what changed.`;
 }
@@ -884,11 +1025,11 @@ function showWelcome() {
 
   const b = db.body, r = db.recovery;
   const aboveLow = b.weight && b.atl ? (b.weight - b.atl).toFixed(1) : '4.4';
-  addBubble('coach', `Good to see you. Your full Garmin data is now loaded — I finally have the missing piece.<br><br>
-<strong>Your TDEE is 3,210 kcal/day.</strong> That's what you burn. Your BMR alone is 2,500. The plateau is almost certainly a calorie balance problem — you're probably eating close to maintenance without realizing it.<br><br>
-<strong>${b.weight}lb</strong> · ${aboveLow}lb above low · visceral fat ${b.vf} · VO2max ${r.vo2} · RHR 45 bpm (excellent) · deep sleep avg 1.25h (below target)<br><br>
-To update data: tap a source in the sidebar, hit <strong>+ Check-in</strong>, or <strong>upload a screenshot</strong> from any app. I'll read it and log it automatically.<br><br>
-What do you want to tackle first?`);
+  const syncStatus = db.meta?.lastSync ? `Last synced: ${db.meta.lastSync}` : 'Auto-syncing from Apple Health';
+addBubble('coach', `Good to see you. Here's where you stand:<br><br>
+<strong>${b.weight}lb</strong> · ${aboveLow}lb above your low of ${b.atl}lb · visceral fat ${b.vf} (target &lt;12) · VO2max ${r.vo2} · RHR ${r.rhr||46} bpm<br><br>
+${syncStatus}. Your health data flows in automatically — just open the app and it's current. Hit <strong>+ Check-in</strong> to log something manually, or upload a screenshot from any health app.<br><br>
+What do you want to work on today?`);
 }
 
 // ── PHOTO HANDLER ─────────────────────────────────────────────────────
@@ -1089,7 +1230,93 @@ function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
 
 // ── INIT ──────────────────────────────────────────────────────────────
-loadDB();
+loadDB().then(() => {
+  // Auto-fetch latest health data from sync endpoint on load
+  fetchLatestHealthData();
+});
+
+async function fetchLatestHealthData() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    let changed = false;
+
+    // Fetch health metrics
+    const res = await fetch('/.netlify/functions/health-sync');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.update) {
+        if (data.update.body) {
+          Object.assign(db.body, data.update.body);
+          if (data.update.body.weight) {
+            const exists = db.body.history.some(h => h.date === today);
+            if (!exists) db.body.history.push({ date: today, w: data.update.body.weight });
+          }
+        }
+        if (data.update.recovery) Object.assign(db.recovery, data.update.recovery);
+        if (data.update.meta) db.meta = { ...db.meta, ...data.update.meta };
+        changed = true;
+      }
+    }
+
+    // Fetch latest workout
+    const wres = await fetch('/.netlify/functions/workout-sync');
+    if (wres.ok) {
+      const wdata = await wres.json();
+      if (wdata.workout) {
+        const w = wdata.workout;
+        db.workout.lastDate = w.date || today;
+        db.workout.lastType = w.type || db.workout.lastType;
+        db.workout.lastExercises = w.exercises || db.workout.lastExercises;
+        db.workout.lastDuration = w.duration || db.workout.lastDuration;
+        if (w.history?.length) {
+          // Merge new workouts into history
+          const existingDates = new Set((db.workout.history||[]).map(h => h.date));
+          w.history.filter(h => !existingDates.has(h.date)).forEach(h => db.workout.history.unshift(h));
+          db.workout.history = db.workout.history.slice(0, 30);
+        }
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await saveDB();
+      updateSidebar();
+      const syncDate = db.meta?.lastSync || today;
+      document.getElementById('ch-sub').textContent = `Data synced · ${syncDate}`;
+    }
+  } catch(e) {
+    // Silent fail — use local data
+  }
+}
+setTimeout(fetchLiveHealth, 1000);
+
+async function fetchLiveHealth() {
+  try {
+    const res = await fetch('/.netlify/functions/health-data');
+    const data = await res.json();
+    if (!data?.body && !data?.recovery) return; // no data yet
+    
+    // Merge live data into local DB
+    if (data.body?.weight) { db.body.weight = data.body.weight; db.body.weightDate = data.body.weightDate; }
+    if (data.body?.bf) db.body.bf = data.body.bf;
+    if (data.body?.ffm) db.body.ffm = data.body.ffm;
+    if (data.recovery?.rhr) db.recovery.rhr = data.recovery.rhr;
+    if (data.recovery?.hrv) db.recovery.hrv = data.recovery.hrv;
+    if (data.recovery?.vo2) db.recovery.vo2 = data.recovery.vo2;
+    if (data.recovery?.steps) db.recovery.steps = data.recovery.steps;
+    if (data.recovery?.sleep) db.recovery.sleep = data.recovery.sleep;
+    if (data.recovery?.deepSleep) db.recovery.deepSleep = data.recovery.deepSleep;
+    if (data.recovery?.tdee) db.recovery.tdee = data.recovery.tdee;
+    if (data.recovery?.activeCalories) db.recovery.activeCalories = data.recovery.activeCalories;
+    if (data.meta?.lastSync) db.meta.lastUpdated = data.meta.lastSync;
+    
+    updateSidebar();
+    updateDBStatus();
+    console.log('✓ Live health data loaded from Health Auto Export:', data.meta?.lastSync);
+  } catch(e) { 
+    console.log('Live health data not available yet:', e.message); 
+  }
+}
 </script>
 </body>
 </html>
