@@ -451,27 +451,44 @@ function updateDBStatus() {
 // ── SIDEBAR METRICS ───────────────────────────────────────────────────
 function updateSidebar() {
   const b = db.body, r = db.recovery, w = db.workout;
-  set('s-weight', b.weight ? b.weight+'lb' : '—');
-  set('s-weight-d', b.atl ? `low: ${b.atl}lb` : '', 'neu');
-  set('s-bf', b.bf ? b.bf+'%' : '—');
-  set('s-bf-d', 'post-Jan scale', 'neu');
-  set('s-ffm', b.ffm ? b.ffm+'lb' : '—');
-  set('s-vf', b.vf || '—');
-  set('s-vf-d', b.vf >= 13 ? 'elevated ↑' : b.vf ? 'good' : '', b.vf >= 13 ? 'bad' : 'good');
+  const fmt = (v, suffix='') => v != null ? v + suffix : '—';
+
+  // Body composition
+  set('s-weight', fmt(b.weight, 'lb'));
+  set('s-weight-d', b.atl ? `low: ${b.atl}lb` : b.weightDate || '', 'neu');
+  set('s-bf', fmt(b.bf, '%'));
+  set('s-bf-d', b.bf ? (b.bf < 18 ? 'good range' : 'above target') : '', b.bf < 18 ? 'good' : 'neu');
+  set('s-ffm', fmt(b.ffm, 'lb'));
+  set('s-vf', fmt(b.vf));
+  set('s-vf-d', b.vf >= 13 ? 'elevated ↑' : b.vf ? 'good ✓' : '', b.vf >= 13 ? 'bad' : 'good');
+
+  // Recovery
   set('s-sleep', r.sleep ? r.sleep+'h' : '—');
-  set('s-sleep-d', r.sleepQ ? `quality: ${r.sleepQ}/10` : '27% weeks <7h', r.sleepQ >= 7 ? 'good' : r.sleepQ ? 'warn' : 'neu');
-  set('s-vo2', r.vo2 || '—');
-  set('s-vo2-d', r.vo2 ? (r.vo2 >= 42 ? '↑ good' : '↓ from 42.4') : '', r.vo2 >= 42 ? 'good' : 'bad');
-  set('s-hrv', r.hrv ? r.hrv+'ms' : r.rhr ? '—' : '—');
+  set('s-sleep-d', r.deepSleep ? `deep: ${r.deepSleep}h` : '', r.deepSleep >= 1.5 ? 'good' : r.deepSleep ? 'warn' : 'neu');
+  set('s-vo2', fmt(r.vo2));
+  set('s-vo2-d', r.vo2 ? (r.vo2 >= 42 ? '↑ good' : '↓ below peak') : '', r.vo2 >= 42 ? 'good' : 'bad');
+  set('s-hrv', r.hrv ? r.hrv+'ms' : '—');
   set('s-bb', r.bb ? r.bb+'/100' : '—');
   set('s-stress', r.stress ? r.stress+'/100' : '—');
+  set('s-rhr', r.rhr ? r.rhr+' bpm' : '—');
+  set('s-rhr-d', r.rhr ? (r.rhr < 50 ? 'excellent' : r.rhr < 60 ? 'good' : 'elevated') : '', r.rhr < 50 ? 'good' : 'neu');
+
+  // TDEE
+  const tdeeVal = r.tdee || (r.activeCalories && b.bmr ? r.activeCalories + b.bmr : null);
+  set('s-tdee', tdeeVal ? tdeeVal+' kcal/day' : '—');
+  set('s-tdee-d', tdeeVal ? 'known ✓' : 'needs data', tdeeVal ? 'good' : 'neu');
+
+  // Training
   set('s-sessions', w.sessionsPerWeek ? w.sessionsPerWeek+'/wk' : '—');
   set('s-lastw', w.lastDate ? w.lastDate.split('-').slice(1).join('/') : '—');
-  set('s-lastex', w.lastExercises ? w.lastExercises.substring(0,35)+'...' : '—');
-  // source badges
-  updateSrcBadge('renpho', b.weightDate);
-  updateSrcBadge('fitbod', w.lastDate);
-  updateSrcBadge('garmin', r.sleep ? db.meta.lastUpdated : null);
+  set('s-lastex', w.lastExercises ? (w.lastExercises.length > 35 ? w.lastExercises.substring(0,35)+'…' : w.lastExercises) : '—');
+
+  // Update sync status
+  const sub = document.getElementById('ch-sub');
+  const healthDate = document.getElementById('src-health-date');
+  const lastSync = db.meta?.lastSync;
+  if (sub) sub.textContent = lastSync ? `Data synced · ${lastSync}` : 'Waiting for first sync';
+  if (healthDate) healthDate.textContent = lastSync ? `last sync: ${lastSync}` : 'not yet synced';
 }
 
 function set(id, val, cls) {
@@ -887,15 +904,35 @@ loadDB().then(() => {
 });
 
 async function fetchLatestHealthData() {
-  // Data arrives via Health Auto Export POST to the Netlify function
-  // On load we just use whatever is already in window.storage (persisted locally)
-  // Update the sync status display
-  const today = new Date().toISOString().split('T')[0];
-  const lastSync = db.meta?.lastSync;
-  const sub = document.getElementById('ch-sub');
-  const healthDate = document.getElementById('src-health-date');
-  if (sub) sub.textContent = lastSync ? `Data synced · ${lastSync}` : 'Waiting for first sync';
-  if (healthDate) healthDate.textContent = lastSync ? `last sync: ${lastSync}` : 'not yet synced';
+  try {
+    // Poll health-sync for latest data (function caches last POST result in memory)
+    const res = await fetch('/.netlify/functions/health-sync?latest=1');
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.update && (data.update.body || data.update.recovery)) {
+        mergeHealthData(data.update, data.syncedAt);
+        updateSidebar();
+      }
+    }
+  } catch(e) {}
+  updateSidebar();
+}
+
+function mergeHealthData(update, syncedAt) {
+  const today = syncedAt || new Date().toISOString().split('T')[0];
+  if (update.body && Object.keys(update.body).length) {
+    Object.assign(db.body, update.body);
+    if (update.body.weight) {
+      db.body.history = db.body.history || [];
+      const exists = db.body.history.some(h => h.date === today);
+      if (!exists) db.body.history.push({date: today, w: update.body.weight});
+    }
+  }
+  if (update.recovery && Object.keys(update.recovery).length) {
+    Object.assign(db.recovery, update.recovery);
+  }
+  if (update.meta) db.meta = {...(db.meta||{}), ...update.meta, lastSync: today};
+  saveDB();
 }
 
 
