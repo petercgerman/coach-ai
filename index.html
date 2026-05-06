@@ -426,7 +426,11 @@ async function saveDB() {
   try {
     if (!db.meta) db.meta = {};
     db.meta.lastUpdated = new Date().toISOString().split('T')[0];
-    await window.storage.set('pete-health-db', JSON.stringify(db));
+    if (window.storage) {
+      await window.storage.set('pete-health-db', JSON.stringify(db));
+    } else {
+      console.log('[saveDB] window.storage not ready yet, skipping persist');
+    }
     updateDBStatus();
     updateSidebar();
   } catch(e) { console.error('Save failed', e); }
@@ -883,8 +887,10 @@ loadDB().then(async () => {
   console.log('[Init] loadDB complete, db.recovery:', JSON.stringify(db.recovery));
   await fetchLatestHealthData();
   console.log('[Init] sync complete, db.recovery.steps:', db.recovery?.steps, 'tdee:', db.recovery?.tdee);
-  showWelcome();
   updateSidebar();
+  showWelcome();
+  // Retry save now that storage should be ready
+  setTimeout(() => saveDB(), 500);
 });
 
 async function fetchLatestHealthData() {
