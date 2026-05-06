@@ -328,7 +328,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fb);font-size:14px
           <div class="field-grid">
             <div class="field"><label>Date</label><input type="date" id="f-wdate"></div>
             <div class="field"><label>Type (Push/Pull/Legs/Cardio)</label><input type="text" id="f-wtype" placeholder="Push"></div>
-            <div class="field" style="grid-column:1/-1"><label>Exercises (brief summary)</label><input type="text" id="f-wex" placeholder="DB Bench 60lb, Shoulder Press 40lb, Skullcrusher 25lb..."></div>
+            <div class="field" style="grid-column:1/-1"><label>Exercises (brief summary)</label><input type="text" id="f-wex" placeholder="e.g. Bench Press, Squats, Pull-ups..."></div>
             <div class="field"><label>Duration (min)</label><input type="number" id="f-wdur" step="5" placeholder="45"></div>
             <div class="field"><label>Perceived effort (1-10)</label><input type="number" id="f-weff" step="1" min="1" max="10" placeholder="7"></div>
           </div>
@@ -424,6 +424,7 @@ async function loadDB() {
 
 async function saveDB() {
   try {
+    if (!db.meta) db.meta = {};
     db.meta.lastUpdated = new Date().toISOString().split('T')[0];
     await window.storage.set('pete-health-db', JSON.stringify(db));
     updateDBStatus();
@@ -509,69 +510,48 @@ function updateSrcBadge(src, date) {
 
 // ── SYSTEM PROMPT ─────────────────────────────────────────────────────
 function buildPrompt() {
-  const b = db.body, r = db.recovery, w = db.workout, n = db.nutrition, g = db.goals;
-  const wHist = (w.history||[]).slice(0,10).map(h=>`  ${h.date} [${h.type}]: ${h.ex}`).join('\n');
-  const bHist = (b.history||[]).slice(-8).map(h=>`  ${h.date}: ${h.w}lb`).join('\n');
-  const sHist = (r.sleepHistory||[]).slice(-8).map(h=>`  ${h.week}: ${h.h}h`).join('\n');
-  const v2Hist = (r.vo2History||[]).map(h=>`  ${h.month}: ${h.v}`).join('\n');
+  const b = db.body || {}, r = db.recovery || {}, w = db.workout || {}, n = db.nutrition || {}, g = db.goals || {};
+  const today = new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'});
+  const fmt = v => v != null ? v : 'not logged';
 
-  return `You are Pete's personal AI health and performance coach. You are direct, data-driven, brutally honest, and give specific actionable advice. You speak like a brilliant knowledgeable friend — never corporate or generic.
+  const wHist = (w.history||[]).slice(0,10).map(h=>`  ${h.date} [${h.type||'?'}]: ${h.ex||'?'}`).join('\n') || '  No workout history yet';
+  const bHist = (b.history||[]).slice(-8).map(h=>`  ${h.date}: ${h.w}lb`).join('\n') || '  No weight history yet';
 
-PETE'S LIVE HEALTH DATA (as of ${db.meta?.lastUpdated || 'today'}):
+  return `You are Pete's personal AI health and performance coach. You are direct, data-driven, brutally honest, and give specific actionable advice based only on the data provided. Never fabricate numbers — if a field shows "not logged", acknowledge it and ask Pete to sync or check in.
+
+PETE'S LIVE HEALTH DATA (as of ${db.meta?.lastSync || 'not yet synced'}):
 
 BODY COMPOSITION:
-- Weight: ${b.weight}lb (last weighed: ${b.weightDate})
-- Body fat: ${b.bf}% | Fat-free mass: ${b.ffm}lb | Muscle: ${b.muscle}lb
-- Visceral fat: ${b.vf}/59 (elevated — target <12) | BMR: ${b.bmr} kcal
-- All-time low: ${b.atl}lb | Currently ${b.weight && b.atl ? (b.weight-b.atl).toFixed(1) : '?'}lb above low
-- NOTE: Scale recalibrated Jan 19 2026 — BF% jumped from ~32% to ~20% algorithmically, not real change
+- Weight: ${fmt(b.weight)}lb (last weighed: ${fmt(b.weightDate)})
+- Body fat: ${fmt(b.bf)}% | Fat-free mass: ${fmt(b.ffm)}lb
+- Visceral fat: ${fmt(b.vf)} (target <12) | BMR: ${fmt(b.bmr)} kcal
+- All-time low: ${fmt(b.atl)}lb
 Weight history (recent):
 ${bHist}
 
 RECOVERY & FITNESS:
-- Last sleep: ${r.sleep}h${r.sleepQ ? ` (quality: ${r.sleepQ}/10)` : ''}
-- HRV: ${r.hrv||'not logged'} | Body Battery: ${r.bb||'not logged'} | Resting HR: ${r.rhr||'not logged'}
-- Stress score: ${r.stress||'not logged'} | VO2max: ${r.vo2} | Steps: ${r.steps||'not logged'}
-- Sleep pattern: avg 7h17min/week over 52 weeks, 27% of weeks under 7h
-- Worst stretch: Oct-Nov 2025 (6h 12min–6h 43min, late bedtimes >11:30pm)
-- Best stretch: Feb-Mar 2026 (8h+, earlier bedtimes)
-Sleep history (recent weeks):
-${sHist}
-VO2max history:
-${v2Hist}
+- Last sleep: ${fmt(r.sleep)}h | Deep: ${fmt(r.deepSleep)}h | REM: ${fmt(r.remSleep)}h
+- HRV: ${fmt(r.hrv)}ms | Resting HR: ${fmt(r.rhr)} bpm | VO2max: ${fmt(r.vo2)}
+- Body Battery: ${fmt(r.bb)} | Stress: ${fmt(r.stress)} | Steps: ${fmt(r.steps)}
+- Active calories: ${fmt(r.activeCalories)} kcal | TDEE: ${fmt(r.tdee)} kcal/day
 
 TRAINING:
-- Last workout: ${w.lastDate} — ${w.lastType}: ${w.lastExercises}
-- Sessions/week: ~${w.sessionsPerWeek} | Last duration: ${w.lastDuration}min
-- 5-year history: 802 workout days (May 2021–May 2026), 340 unique exercises
-- Split: Push/Pull/Legs/Cardio rotation, ~25 days/month
-- Key lifts (current): DB Bench 60lb, Shoulder Press 40lb, Leg Press 340lb, Barbell Hip Thrust 160lb, Lat Pulldown 105lb, Machine Row 135-155lb, Pull-ups (unassisted, 4 reps/set)
+- Last workout: ${fmt(w.lastDate)} — ${fmt(w.lastType)}: ${fmt(w.lastExercises)}
+- Duration: ${fmt(w.lastDuration)} min | Sessions/week: ${fmt(w.sessionsPerWeek)}
 Recent workouts:
 ${wHist}
 
 NUTRITION (today):
-- Calories: ${n.cals||'not logged'} | Protein: ${n.protein||'not logged'}g | Water: ${n.water||'not logged'}oz
-- Diet quality: ${n.dietQ||'not logged'}/10
+- Calories: ${fmt(n.cals)} | Protein: ${fmt(n.protein)}g | Water: ${fmt(n.water)}oz | Quality: ${fmt(n.dietQ)}/10
 
-GOALS: ${g.goal}
-Target: ${g.targetWeight}lb / ${g.targetBF}% body fat
+GOALS: ${g.goal || 'Not set'}
+Target: ${fmt(g.targetWeight)}lb / ${fmt(g.targetBF)}% body fat
 
-KEY COACHING CONTEXT (CRITICAL — read carefully):
-- TDEE IS NOW KNOWN: Pete burns ~3,210 kcal/day on average. BMR is 2,500. Active burn ~450 kcal/day.
-- THE PLATEAU EXPLANATION: To lose 1lb/week Pete needs to eat ~2,710 kcal/day. He is almost certainly eating at or above 3,200 kcal/day. This is the plateau. It's a nutrition problem, not a training problem.
-- DEEP SLEEP IS CHRONICALLY LOW: Avg 1.25h/night vs 1.5-2.0h target. 43% of nights under 7h total. Low deep sleep = suppressed GH release = impaired fat metabolism and muscle repair.
-- STRESS IS EXCELLENT: Avg 25/100 — very low. Not a cortisol issue. Stress is not the problem.
-- RHR IS EXCELLENT: 46.5 bpm — reflects strong cardiovascular fitness, top 10% for his age.
-- BODY BATTERY IS STRONG: Avg daily high 86/100 — well recovered most days.
-- VO2max peaked Feb 2026 (43.0), now 40.0 — declining due to fewer running sessions in April.
-- Visceral fat at 15 is a health priority — will come down with sustained caloric deficit.
-- Fat-free mass stable at ~224lb — not losing muscle despite the plateau.
-- The single highest-leverage intervention: track and reduce daily calories to 2,600-2,800 kcal.
-
-Today: ${new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'})}
+Today: ${today}
 
 When Pete shares a screenshot or describes what he sees in an app, extract the data, update your understanding, and tell him what you extracted. When data is updated, summarize what changed.`;
 }
+
 
 // ── CHAT ──────────────────────────────────────────────────────────────
 async function sendMessage(overrideText) {
@@ -899,38 +879,64 @@ function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
 
 // ── INIT ──────────────────────────────────────────────────────────────
-loadDB().then(() => {
-  fetchLatestHealthData();
+loadDB().then(async () => {
+  console.log('[Init] loadDB complete, db.recovery:', JSON.stringify(db.recovery));
+  await fetchLatestHealthData();
+  console.log('[Init] sync complete, db.recovery.steps:', db.recovery?.steps, 'tdee:', db.recovery?.tdee);
+  showWelcome();
+  updateSidebar();
 });
 
 async function fetchLatestHealthData() {
+  console.log('[HealthSync] Starting fetch...');
   try {
     const res = await fetch('/.netlify/functions/health-sync');
-    if (!res.ok) return;
+    console.log('[HealthSync] Response status:', res.status);
+    if (!res.ok) { console.log('[HealthSync] Bad response, aborting'); return; }
     const data = await res.json();
-    // Gist returns flat: { body:{}, recovery:{}, meta:{}, weightHistory:[] }
+    console.log('[HealthSync] Data received:', JSON.stringify(data).substring(0, 300));
+    console.log('[HealthSync] Has body:', !!data.body, 'Has recovery:', !!data.recovery);
     if (data && (data.body || data.recovery)) {
+      console.log('[HealthSync] Calling mergeHealthData...');
       mergeHealthData(data);
+      console.log('[HealthSync] After merge - db.recovery.steps:', db.recovery.steps);
+      console.log('[HealthSync] After merge - db.recovery.tdee:', db.recovery.tdee);
+    } else {
+      console.log('[HealthSync] No body/recovery in data - skipping merge');
     }
   } catch(e) {
-    console.log('Health sync read failed:', e.message);
+    console.log('[HealthSync] FAILED:', e.message, e.stack);
   }
 }
 
-function mergeHealthData(update, syncedAt) {
-  const today = syncedAt || new Date().toISOString().split('T')[0];
-  if (update.body && Object.keys(update.body).length) {
-    Object.assign(db.body, update.body);
-    if (update.body.weight) {
+function mergeHealthData(data) {
+  console.log('[Merge] data received:', JSON.stringify(data).substring(0,200));
+  const today = data.meta?.lastSync || new Date().toISOString().split('T')[0];
+  if (!db.body) db.body = {};
+  if (!db.recovery) db.recovery = {};
+  if (!db.meta) db.meta = {};
+
+  if (data.body && Object.keys(data.body).length) {
+    Object.assign(db.body, data.body);
+    if (data.body.weight) {
       db.body.history = db.body.history || [];
       const exists = db.body.history.some(h => h.date === today);
-      if (!exists) db.body.history.push({date: today, w: update.body.weight});
+      if (!exists) db.body.history.push({date: today, w: data.body.weight});
     }
+    console.log('[Merge] body merged:', JSON.stringify(db.body));
   }
-  if (update.recovery && Object.keys(update.recovery).length) {
-    Object.assign(db.recovery, update.recovery);
+  if (data.recovery && Object.keys(data.recovery).length) {
+    Object.assign(db.recovery, data.recovery);
+    console.log('[Merge] recovery merged:', JSON.stringify(db.recovery));
   }
-  if (update.meta) db.meta = {...(db.meta||{}), ...update.meta, lastSync: today};
+  if (data.meta) Object.assign(db.meta, data.meta);
+  if (data.weightHistory?.length) {
+    const existing = new Set((db.body.history||[]).map(h => h.date));
+    data.weightHistory.filter(h => !existing.has(h.date)).forEach(h => {
+      db.body.history.push(h);
+    });
+    db.body.history.sort((a,b) => a.date.localeCompare(b.date));
+  }
   saveDB();
 }
 
