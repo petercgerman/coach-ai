@@ -33,20 +33,23 @@ async function getAccessToken() {
 
 // ── Drive helpers ─────────────────────────────────────────────────────
 async function listFiles(token, folderId) {
-  const q = encodeURIComponent(`'${folderId}' in parents and mimeType='text/csv' and trashed=false`);
+  const q = encodeURIComponent(`'${folderId}' in parents and (mimeType='text/csv' or mimeType='application/vnd.google-apps.spreadsheet') and trashed=false`);
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name+desc&pageSize=10&fields=files(id,name)`,
+    `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name+desc&pageSize=10&fields=files(id,name,mimeType)`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const data = await res.json();
   return data.files || [];
 }
 
-async function downloadFile(token, fileId) {
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+async function downloadFile(token, fileId, mimeType) {
+  // Google Sheets need to be exported as CSV
+  const isSheet = mimeType === 'application/vnd.google-apps.spreadsheet';
+  const url = isSheet
+    ? `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/csv`
+    : `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Download failed: ${res.status} ${await res.text()}`);
   return res.text();
 }
 
@@ -54,9 +57,9 @@ async function downloadFile(token, fileId) {
 function parseCSV(text) {
   const lines = text.trim().split('\n');
   if (lines.length < 2) return [];
-  const headers = lines[0].split('\t').map(h => h.trim());
+  const headers = lines[0].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(h => h.trim().replace(/^"|"$/g, ''));
   return lines.slice(1).map(line => {
-    const vals = line.split('\t');
+    const vals = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
     const row = {};
     headers.forEach((h, i) => { row[h] = vals[i]?.trim() || ''; });
     return row;
@@ -179,14 +182,14 @@ exports.handler = async (event) => {
     if (!healthFiles.length) return { statusCode: 200, headers, body: JSON.stringify({ ok: true, message: 'No files found' }) };
 
     // Download and parse latest health file (most recent by name)
-    const healthCSV = await downloadFile(token, healthFiles[0].id);
+    const healthCSV = await downloadFile(token, healthFiles[0].id, healthFiles[0].mimeType);
     const healthRows = parseCSV(healthCSV);
     const { body, recovery } = aggregateHealth(healthRows);
 
     // Download and parse latest workout file
     let workout = null;
     if (workoutFiles.length) {
-      const workoutCSV = await downloadFile(token, workoutFiles[0].id);
+      const workoutCSV = await downloadFile(token, workoutFiles[0].id, workoutFiles[0].mimeType);
       const workoutRows = parseCSV(workoutCSV);
       workout = aggregateWorkouts(workoutRows);
     }
