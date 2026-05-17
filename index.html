@@ -486,7 +486,8 @@ function updateSidebar() {
   // Training
   set('s-sessions', w.sessionsPerWeek ? w.sessionsPerWeek+'/wk' : '—');
   set('s-lastw', w.lastDate ? w.lastDate.split('-').slice(1).join('/') : '—');
-  set('s-lastex', w.lastExercises ? (w.lastExercises.length > 35 ? w.lastExercises.substring(0,35)+'…' : w.lastExercises) : '—');
+  const lastEx = w.lastExercises || (w.lastType ? `${w.lastType}${w.lastDuration ? ' · '+w.lastDuration : ''}${w.lastActiveKcal ? ' · '+Math.round(w.lastActiveKcal)+' kcal' : ''}` : null);
+  set('s-lastex', lastEx ? (lastEx.length > 40 ? lastEx.substring(0,40)+'…' : lastEx) : '—');
 
   // Update sync status
   const sub = document.getElementById('ch-sub');
@@ -916,33 +917,35 @@ async function fetchLatestHealthData() {
 }
 
 function mergeHealthData(data) {
-  console.log('[Merge] data received:', JSON.stringify(data).substring(0,200));
   const today = data.meta?.lastSync || new Date().toISOString().split('T')[0];
   if (!db.body) db.body = {};
   if (!db.recovery) db.recovery = {};
+  if (!db.workout) db.workout = {};
   if (!db.meta) db.meta = {};
 
   if (data.body && Object.keys(data.body).length) {
     Object.assign(db.body, data.body);
     if (data.body.weight) {
       db.body.history = db.body.history || [];
-      const exists = db.body.history.some(h => h.date === today);
-      if (!exists) db.body.history.push({date: today, w: data.body.weight});
+      const exists = db.body.history.some(h => h.date === data.body.weightDate || h.date === today);
+      if (!exists) db.body.history.push({ date: data.body.weightDate || today, w: data.body.weight });
     }
-    console.log('[Merge] body merged:', JSON.stringify(db.body));
   }
+
   if (data.recovery && Object.keys(data.recovery).length) {
     Object.assign(db.recovery, data.recovery);
-    console.log('[Merge] recovery merged:', JSON.stringify(db.recovery));
   }
+
+  if (data.workout) {
+    Object.assign(db.workout, data.workout);
+    // Store workout history
+    if (data.workout.history?.length) {
+      db.workout.history = data.workout.history;
+    }
+  }
+
   if (data.meta) Object.assign(db.meta, data.meta);
-  if (data.weightHistory?.length) {
-    const existing = new Set((db.body.history||[]).map(h => h.date));
-    data.weightHistory.filter(h => !existing.has(h.date)).forEach(h => {
-      db.body.history.push(h);
-    });
-    db.body.history.sort((a,b) => a.date.localeCompare(b.date));
-  }
+
   saveDB();
 }
 
