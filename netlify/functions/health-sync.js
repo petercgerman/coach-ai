@@ -207,9 +207,8 @@ exports.handler = async (event) => {
 
     if (!healthFiles.length) return { statusCode: 200, headers, body: JSON.stringify({ ok: true, message: 'No files found' }) };
 
-    // Use yesterday's health file (today's is incomplete)
-    // Files are sorted desc by name, so [0]=today, [1]=yesterday
-    const healthFile = healthFiles.length > 1 ? healthFiles[1] : healthFiles[0];
+    // Use most recent health file
+    const healthFile = healthFiles[0];
     const healthCSV = await downloadFile(token, healthFile.id, healthFile.mimeType);
     const healthRows = parseCSV(healthCSV);
     const { body, recovery } = aggregateHealth(healthRows);
