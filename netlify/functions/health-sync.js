@@ -70,47 +70,61 @@ function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
 
 // ── Aggregate hourly health rows into daily summary ───────────────────
 function aggregateHealth(rows) {
-  const out = {};
+  if (!rows.length) return { body: {}, recovery: {} };
+
+  // Debug: log first row keys to verify column names
+  console.log('[Health] Column count:', Object.keys(rows[0]).length);
+  console.log('[Health] First row keys:', JSON.stringify(Object.keys(rows[0])));
+  console.log('[Health] Sample row:', JSON.stringify(rows[0]));
+
   let weightVal = null, bfVal = null, leanVal = null;
   let rhrVal = null, vo2Val = null;
   let totalActive = 0, totalResting = 0;
   let sleep = {}, hrvVals = [];
 
+  // Helper: find value by partial column name match (handles encoding differences)
+  const findCol = (row, ...terms) => {
+    const keys = Object.keys(row);
+    for (const term of terms) {
+      const key = keys.find(k => k.toLowerCase().includes(term.toLowerCase()));
+      if (key && row[key] !== '') return row[key];
+    }
+    return '';
+  };
+
   for (const r of rows) {
-    // Weight — take last non-null
-    const w = num(r['Weight (lb)']);
+    const w = num(findCol(r, 'Weight (lb)'));
     if (w && w > 100) weightVal = w;
 
-    const bf = num(r['Body Fat Percentage (%)']);
-    if (bf) bfVal = bf;
+    const bf = num(findCol(r, 'Body Fat Percentage'));
+    if (bf && bf < 100) bfVal = bf;
 
-    const lean = num(r['Lean Body Mass (lb)']);
-    if (lean) leanVal = lean;
+    const lean = num(findCol(r, 'Lean Body Mass'));
+    if (lean && lean > 50) leanVal = lean;
 
-    const rhr = num(r['Resting Heart Rate (count/min)']);
-    if (rhr) rhrVal = rhr;
+    const rhr = num(findCol(r, 'Resting Heart Rate'));
+    if (rhr && rhr > 30 && rhr < 120) rhrVal = rhr;
 
-    const vo2 = num(r['VO2 Max (ml/(kg·min))']);
-    if (vo2) vo2Val = vo2;
+    const vo2 = num(findCol(r, 'VO2 Max'));
+    if (vo2 && vo2 > 10) vo2Val = vo2;
 
-    const hrv = num(r['Heart Rate Variability (ms)']);
-    if (hrv) hrvVals.push(hrv);
+    const hrv = num(findCol(r, 'Heart Rate Variability'));
+    if (hrv && hrv > 0) hrvVals.push(hrv);
 
-    const active = num(r['Active Energy (kcal)']);
+    const active = num(findCol(r, 'Active Energy'));
     if (active) totalActive += active;
 
-    const resting = num(r['Resting Energy (kcal)']);
+    const resting = num(findCol(r, 'Resting Energy'));
     if (resting) totalResting += resting;
 
-    // Sleep — take first non-null row (daily summary usually in first row)
     if (!sleep.total) {
-      const st = num(r['Sleep Analysis [Total] (hr)']);
-      if (st) {
+      const st = num(findCol(r, 'Sleep Analysis [Total]'));
+      if (st && st > 0) {
         sleep.total = st;
-        sleep.deep = num(r['Sleep Analysis [Deep] (hr)']);
-        sleep.rem = num(r['Sleep Analysis [REM] (hr)']);
-        sleep.core = num(r['Sleep Analysis [Core] (hr)']);
-        sleep.awake = num(r['Sleep Analysis [Awake] (hr)']);
+        sleep.deep = num(findCol(r, 'Sleep Analysis [Deep]'));
+        sleep.rem = num(findCol(r, 'Sleep Analysis [REM]'));
+        sleep.core = num(findCol(r, 'Sleep Analysis [Core]'));
+        sleep.awake = num(findCol(r, 'Sleep Analysis [Awake]'));
       }
     }
   }
@@ -141,20 +155,32 @@ function aggregateHealth(rows) {
 // ── Aggregate workout rows ─────────────────────────────────────────────
 function aggregateWorkouts(rows) {
   if (!rows.length) return null;
+  console.log('[Workout] Column count:', Object.keys(rows[0]).length);
+  console.log('[Workout] Keys:', JSON.stringify(Object.keys(rows[0])));
+
+  const findCol = (row, ...terms) => {
+    const keys = Object.keys(row);
+    for (const term of terms) {
+      const key = keys.find(k => k.toLowerCase().includes(term.toLowerCase()));
+      if (key && row[key] !== '') return row[key];
+    }
+    return '';
+  };
+
   const latest = rows[rows.length - 1];
   return {
-    lastDate: latest['Start']?.split(' ')[0],
-    lastType: latest['Type'],
-    lastDuration: latest['Duration'],
-    lastActiveKcal: num(latest['Active Energy (kcal)']),
-    lastAvgHR: num(latest['Avg Heart Rate (bpm)']),
-    lastMaxHR: num(latest['Max Heart Rate (bpm)']),
+    lastDate: findCol(latest, 'Start')?.split(' ')[0] || findCol(latest, 'start')?.split('T')[0],
+    lastType: findCol(latest, 'Type', 'type'),
+    lastDuration: findCol(latest, 'Duration', 'duration'),
+    lastActiveKcal: num(findCol(latest, 'Active Energy')),
+    lastAvgHR: num(findCol(latest, 'Avg Heart Rate')),
+    lastMaxHR: num(findCol(latest, 'Max Heart Rate')),
     history: rows.slice(-10).reverse().map(r => ({
-      date: r['Start']?.split(' ')[0],
-      type: r['Type'],
-      duration: r['Duration'],
-      kcal: num(r['Active Energy (kcal)']),
-      avgHR: num(r['Avg Heart Rate (bpm)']),
+      date: findCol(r, 'Start')?.split(' ')[0],
+      type: findCol(r, 'Type', 'type'),
+      duration: findCol(r, 'Duration'),
+      kcal: num(findCol(r, 'Active Energy')),
+      avgHR: num(findCol(r, 'Avg Heart Rate')),
     }))
   };
 }
